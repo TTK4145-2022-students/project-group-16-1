@@ -35,4 +35,12 @@ func elevator_print() {
 
 }
 
-//elevator_uninitialised() - returns an uninitialised Elevator type object
+func elevator_uninitialised() {
+	return Elevator{
+		floor = -1,
+		dirn = D_Stop,
+		behaviour = EB_Idle,
+		config.clearRequestVariant = CV_All,
+		config.doorOpenDuration_s = 3.0,
+	}
+}
