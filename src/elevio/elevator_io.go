@@ -121,7 +121,9 @@ func PollStopButton(receiver chan<- bool) {
 }
 
 func PollObstructionSwitch(receiver chan<- bool) {
-	prev := falsebtn
+	prev := false
+	for {
+		time.Sleep(_pollRate)
 		v := getObstruction()
 		if v != prev {
 			receiver <- v

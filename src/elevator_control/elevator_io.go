@@ -4,7 +4,6 @@ package elevator_control
 
 import (
 	"Elevator-project/src/elevio"
-	"fmt"
 )
 
 type Dirn int
@@ -24,26 +23,25 @@ const (
 )
 
 func initElevIO() {
-	elevio.Init()
+	elevio.Init(HARDWARE_ADDR, N_FLOORS)
 }
 
-func setMotorDirection(dir Dirn) {
-	elevio.SetMotorDirection(dir)
+func io_setMotorDirection(dir Dirn) {
+	elevio.SetMotorDirection(elevio.MotorDirection(dir))
 }
 
-func setButtonLamp(button Button, floor int, value bool) {
-	elevio.SetButtonLamp(button,floor, value)
+func io_setButtonLamp(button Button, floor int, value bool) {
+	elevio.SetButtonLamp(elevio.ButtonType(button), floor, value)
 }
 
-func setFloorIndicator(floor int) {
-	elevio.setFloorIndicator(floor)
+func io_setFloorIndicator(floor int) {
+	elevio.SetFloorIndicator(floor)
 }
 
-func setDoorOpenLamp(value bool) {
+func io_setDoorOpenLamp(value bool) {
 	elevio.SetDoorOpenLamp(value)
 }
 
-func setStopLamp(value bool) {
+func _setStopLamp(value bool) {
 	elevio.SetStopLamp(value)
 }
-

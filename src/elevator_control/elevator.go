@@ -1,5 +1,10 @@
 package elevator_control
 
+import (
+	"fmt"
+	"time"
+)
+
 type ElevatorBehaviour int
 
 const (
@@ -20,27 +25,29 @@ type Elevator struct {
 	dirn      Dirn
 	requests  [N_FLOORS][N_BUTTONS]int
 	behaviour ElevatorBehaviour
+	config    config
+}
 
-	config struct {
-		clearRequestVariant ClearRequestVariant
-		doorOpenDuration_s  float64 //isteden for double
-	}
+type config struct {
+	clearRequestVariant ClearRequestVariant
+	doorOpenDuration_s  time.Duration
 }
 
 func eb_toString(ev ElevatorBehaviour) {
-
+	fmt.Println("Print elev behaviour here")
 }
 
-func elevator_print() {
-
+func elevator_print(elevator Elevator) {
+	fmt.Println("Print elev here")
 }
 
-func elevator_uninitialised() {
+func elevator_uninitialised() Elevator {
 	return Elevator{
-		floor = -1,
-		dirn = D_Stop,
-		behaviour = EB_Idle,
-		config.clearRequestVariant = CV_All,
-		config.doorOpenDuration_s = 3.0,
+		floor:     -1,
+		dirn:      D_Stop,
+		behaviour: EB_Idle,
+		config: config{
+			clearRequestVariant: CV_InDirn,
+			doorOpenDuration_s:  3 * time.Second},
 	}
 }

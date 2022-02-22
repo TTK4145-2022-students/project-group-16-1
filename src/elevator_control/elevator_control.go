@@ -3,30 +3,29 @@ package elevator_control
 import (
 	"Elevator-project/src/elevio"
 	"fmt"
-	"time"
 )
 
 func Elevator_control(numFloors int, inputPollRate_ms float64, drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
 	println("Elevator control started!")
 
-	door_timer = time.NewTimer()
-
 	for {
 		select {
 		case a := <-drv_buttons:
 			fmt.Printf("%+v\n", a)
-			fsm_onRequestButtonPress(a,timer)
+			btn_floor := a.Floor
+			btn_type := Button(a.Button)
+			fsm_onRequestButtonPress(btn_floor, btn_type)
 
 		case a := <-drv_floors:
 			fmt.Printf("%+v\n", a)
-			fsm_onFloorArrival(a.Floor, timer)
+			fsm_onFloorArrival(a)
 
 		case a := <-drv_obstr:
 			fmt.Printf("%+v\n", a)
 			if a {
-				setMotorDirection(D_Stop)
+				io_setMotorDirection(D_Stop)
 			} else {
-				setMotorDirection(d)
+				io_setMotorDirection(elevator.dirn)
 			}
 
 		case a := <-drv_stop:

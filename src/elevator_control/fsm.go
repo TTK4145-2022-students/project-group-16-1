@@ -1,9 +1,16 @@
 package elevator_control
 
+import (
+	"fmt"
+	"time"
+)
+
 var elevator Elevator
+var door_timer *time.Timer
 
 const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
+const HARDWARE_ADDR = ":15657"
 
 func fsm_init() {
 	elevator = elevator_uninitialised()
@@ -12,80 +19,76 @@ func fsm_init() {
 func setAllLights(es Elevator) {
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			setButtonLamp(btn, floor, elevator.requests[floor][btn] != 0)
+			io_setButtonLamp(Button(btn), floor, elevator.requests[floor][btn] != 0)
 		}
 	}
 }
 
 func fsm_onInitBetweenFloors() {
-	setMotorDirection(D_Down)
+	io_setMotorDirection(D_Down)
 	elevator.dirn = D_Down
 	elevator.behaviour = EB_Moving
 }
 
-func fsm_onRequestButtonPress(btn_floor int, btn_type Button, door_timer time.Timer) {
+func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 	//Println("\n\n%s(%d, %s)\n", __FUNCTION__, btn_floor, elevio_button_toString(btn_type))
 	elevator_print(elevator)
+
 	switch elevator.behaviour {
 	case EB_DoorOpen:
 		if requests_shouldClearImmediately(elevator, btn_floor, btn_type) {
-			door_timer.
+			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 		}
 		elevator.requests[btn_floor][btn_type] = 1
-		
 	case EB_Moving:
 		elevator.requests[btn_floor][btn_type] = 1
 		break
 	case EB_Idle:
 		elevator.requests[btn_floor][btn_type] = 1
-		//calculate next action
-		//update behaviour and direction accordingly
-		elevator.behaviour = elevator.behaviour
-		switch elevator.behaviour { //switch on new updated elevator behaviour
+		a := requests_nextAction(elevator)
+		elevator.dirn = a.dirn
+		elevator.behaviour = a.behaviour
+		switch elevator.behaviour {
 		case EB_DoorOpen:
-			//door light
-			//time start
-			//clear requests at current floor (elevator = request_ClearAtCurrentFloor())
-			break
+			io_setDoorOpenLamp(true)
+			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+			elevator = requests_clearAtCurrentFloor(elevator)
 		case EB_Moving:
-			//Motor direction = elevator.dirn
-			break
+			io_setMotorDirection(elevator.dirn)
 		case EB_Idle:
 
-			break
 		}
-		break
+
 	}
 	setAllLights(elevator)
+
 	println("\nNew state:\n")
 	elevator_print(elevator)
 }
 
-func fsm_onFloorArrival(newFloor int, door_timer time.Timer) {
+func fsm_onFloorArrival(newFloor int) {
 	//fmt.Println("\n\n%s(%d)\n", __FUNCTION__, newFloor)
-	//elevator_print(elevator)
+	elevator_print(elevator)
 
 	elevator.floor = newFloor
 
-	setFloorIndicator(newFloor)
+	io_setFloorIndicator(newFloor)
 
 	switch elevator.behaviour {
 	case EB_Moving:
 		if requests_shouldStop(elevator) {
-			setMotorDirection(D_Stop)
-			setDoorOpenLamp(true)
+			io_setMotorDirection(D_Stop)
+			io_setDoorOpenLamp(true)
 			elevator := requests_clearAtCurrentFloor(elevator)
-			timer_start(elevator.config.doorOpenDuration_s)
+			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 			setAllLights(elevator)
 			elevator.behaviour = EB_DoorOpen
 		}
-		break
 	default:
-		break
 	}
 
-	//fmt.Println("\nNew state:\n")
-	//elevator_print(elevator)
+	fmt.Println("New state:")
+	elevator_print(elevator)
 }
 
 func fsm_onDoorTimeout() {
@@ -100,19 +103,17 @@ func fsm_onDoorTimeout() {
 
 		switch elevator.behaviour {
 		case EB_DoorOpen:
-			//timer_start(elevator.config.doorOpenDuration_s)
+			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 			elevator := requests_clearAtCurrentFloor(elevator)
 			setAllLights(elevator)
-			break
 		case EB_Moving:
+			io_setDoorOpenLamp(false)
+			io_setMotorDirection(elevator.dirn)
 		case EB_Idle:
-			setDoorOpenLamp(false)
-			setMotorDirection(elevator.dirn)
-			break
+			io_setDoorOpenLamp(false)
+			io_setMotorDirection(elevator.dirn)
 		}
-		break
 	default:
-		break
 	}
 	//fmt.Println("\nNew state:\n")
 	//elevator_print(elevator)
