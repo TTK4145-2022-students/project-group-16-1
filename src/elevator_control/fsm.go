@@ -10,7 +10,7 @@ var door_timer *time.Timer
 
 const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
-const HARDWARE_ADDR = ":15657"
+const HARDWARE_ADDR = "localhost:15657"
 
 func fsm_init() {
 	elevator = elevator_uninitialised()
