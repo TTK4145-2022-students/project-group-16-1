@@ -1,11 +1,13 @@
 package elevator_control
 
+import "fmt"
+
 type Action struct {
 	dirn      Dirn
 	behaviour ElevatorBehaviour
 }
 
-func requests_above(e Elevator) bool {
+func requests_above(e *Elevator) bool {
 	for f := e.floor + 1; f < N_FLOORS; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
 			if e.requests[f][btn] != 0 {
@@ -16,8 +18,8 @@ func requests_above(e Elevator) bool {
 	return false
 }
 
-func requests_below(e Elevator) bool {
-	for f := e.floor + 1; f < N_FLOORS; f++ {
+func requests_below(e *Elevator) bool {
+	for f := 0; f < e.floor; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
 			if e.requests[f][btn] != 0 {
 				return true
@@ -27,7 +29,7 @@ func requests_below(e Elevator) bool {
 	return false
 }
 
-func requests_here(e Elevator) bool {
+func requests_here(e *Elevator) bool {
 	for btn := 0; btn < N_BUTTONS; btn++ {
 		if e.requests[e.floor][btn] != 0 {
 			return true
@@ -36,7 +38,7 @@ func requests_here(e Elevator) bool {
 	return false
 }
 
-func requests_nextAction(e Elevator) Action {
+func requests_nextAction(e *Elevator) Action {
 	switch e.dirn {
 	case D_Up:
 		var action Action
@@ -91,6 +93,7 @@ func requests_nextAction(e Elevator) Action {
 			action.behaviour = EB_Idle
 			action.dirn = D_Stop
 		}
+		fmt.Printf("%+v", action)
 		return action
 
 	default:
@@ -101,7 +104,7 @@ func requests_nextAction(e Elevator) Action {
 	}
 }
 
-func requests_shouldStop(e Elevator) bool {
+func requests_shouldStop(e *Elevator) bool {
 	switch e.dirn {
 	case D_Down:
 		return (e.requests[e.floor][B_HallDown] != 0) || (e.requests[e.floor][B_Cab] != 0) || !requests_below(e)
@@ -114,7 +117,7 @@ func requests_shouldStop(e Elevator) bool {
 	}
 }
 
-func requests_shouldClearImmediately(e Elevator, btn_floor int, btn_type Button) bool {
+func requests_shouldClearImmediately(e *Elevator, btn_floor int, btn_type Button) bool {
 	switch e.config.clearRequestVariant {
 	case CV_All:
 		return e.floor == btn_floor
@@ -129,7 +132,7 @@ func requests_shouldClearImmediately(e Elevator, btn_floor int, btn_type Button)
 	}
 }
 
-func requests_clearAtCurrentFloor(e Elevator) Elevator {
+func requests_clearAtCurrentFloor(e *Elevator) *Elevator {
 
 	switch e.config.clearRequestVariant {
 	case CV_All:

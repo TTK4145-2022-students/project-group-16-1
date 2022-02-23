@@ -33,16 +33,20 @@ type config struct {
 	doorOpenDuration_s  time.Duration
 }
 
-func eb_toString(ev ElevatorBehaviour) {
-	fmt.Println("Print elev behaviour here")
+func (ev ElevatorBehaviour) String() string {
+	behaviours := [...]string{"EB_Idle", "EB_DoorOpen", "EB_moving"}
+	if ev < EB_Idle || ev > EB_Moving {
+		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(ev))
+	}
+	return behaviours[ev]
 }
 
-func elevator_print(elevator Elevator) {
-	fmt.Println("Print elev here")
+func elevator_print(elevator *Elevator) {
+	fmt.Printf("Floor: %d\n Direction: %s\n Requests: %v\n Behaviour: %s\n", elevator.floor, elevator.dirn.String(), elevator.requests, elevator.behaviour.String())
 }
 
-func elevator_uninitialised() Elevator {
-	return Elevator{
+func elevator_uninitialised() *Elevator {
+	elevator := &Elevator{
 		floor:     -1,
 		dirn:      D_Stop,
 		behaviour: EB_Idle,
@@ -50,4 +54,6 @@ func elevator_uninitialised() Elevator {
 			clearRequestVariant: CV_InDirn,
 			doorOpenDuration_s:  3 * time.Second},
 	}
+
+	return elevator
 }

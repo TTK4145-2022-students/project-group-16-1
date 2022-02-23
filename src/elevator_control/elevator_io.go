@@ -4,6 +4,7 @@ package elevator_control
 
 import (
 	"Elevator-project/src/elevio"
+	"fmt"
 )
 
 type Dirn int
@@ -13,6 +14,14 @@ const (
 	D_Stop      = 0
 	D_Up        = 1
 )
+
+func (dirn Dirn) String() string {
+	dirnStrings := [...]string{"D_Down", "D_Stop", "D_Up"}
+	if dirn < D_Down || dirn > D_Up {
+		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(dirn))
+	}
+	return dirnStrings[dirn+1]
+}
 
 type Button int
 

@@ -11,6 +11,8 @@ func Elevator_control(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, 
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
 
+	fsm_init()
+
 	for {
 		select {
 		case a := <-drv_buttons:
