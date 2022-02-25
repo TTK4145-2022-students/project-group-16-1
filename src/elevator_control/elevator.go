@@ -25,7 +25,7 @@ const (
 type Elevator struct {
 	floor     int
 	dirn      Dirn
-	requests  [N_FLOORS][N_BUTTONS]int
+	requests  [N_FLOORS][N_BUTTONS]bool
 	behaviour ElevatorBehaviour
 	config    config
 }

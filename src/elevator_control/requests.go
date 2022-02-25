@@ -10,7 +10,7 @@ type Action struct {
 func requests_above(e *Elevator) bool {
 	for f := e.floor + 1; f < N_FLOORS; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			if e.requests[f][btn] != 0 {
+			if e.requests[f][btn] {
 				return true
 			}
 		}
@@ -21,7 +21,7 @@ func requests_above(e *Elevator) bool {
 func requests_below(e *Elevator) bool {
 	for f := 0; f < e.floor; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			if e.requests[f][btn] != 0 {
+			if e.requests[f][btn] {
 				return true
 			}
 		}
@@ -31,7 +31,7 @@ func requests_below(e *Elevator) bool {
 
 func requests_here(e *Elevator) bool {
 	for btn := 0; btn < N_BUTTONS; btn++ {
-		if e.requests[e.floor][btn] != 0 {
+		if e.requests[e.floor][btn] {
 			return true
 		}
 	}
@@ -107,9 +107,9 @@ func requests_nextAction(e *Elevator) Action {
 func requests_shouldStop(e *Elevator) bool {
 	switch e.dirn {
 	case D_Down:
-		return (e.requests[e.floor][B_HallDown] != 0) || (e.requests[e.floor][B_Cab] != 0) || !requests_below(e)
+		return (e.requests[e.floor][B_HallDown]) || (e.requests[e.floor][B_Cab]) || !requests_below(e)
 	case D_Up:
-		return (e.requests[e.floor][B_HallUp] != 0) || (e.requests[e.floor][B_Cab] != 0) || !requests_above(e)
+		return (e.requests[e.floor][B_HallUp]) || (e.requests[e.floor][B_Cab]) || !requests_above(e)
 	case D_Stop:
 		return true
 	default:
@@ -117,19 +117,21 @@ func requests_shouldStop(e *Elevator) bool {
 	}
 }
 
-func requests_shouldClearImmediately(e *Elevator, btn_floor int, btn_type Button) bool {
-	fmt.Println("SHOULD CLEAR: ")
+func requests_shouldClearImmediately(e *Elevator) {
 	switch e.config.clearRequestVariant {
 	case CV_All:
-		return e.floor == btn_floor
+		//Not needed yet
 	case CV_InDirn:
-		shouldClear := ((e.floor == btn_floor) && ((e.dirn == D_Up && btn_type == B_HallUp) ||
-			(e.dirn == D_Down && btn_type == B_HallDown) ||
-			e.dirn == D_Stop ||
-			btn_type == B_Cab))
-		return shouldClear
+		if e.dirn == D_Up {
+			e.requests[e.floor][B_HallUp] = false
+		} else if e.dirn == D_Down {
+			e.requests[e.floor][B_HallDown] = false
+		} else {
+			e.requests[e.floor][B_HallUp] = false
+			e.requests[e.floor][B_HallDown] = false
+		}
+		e.requests[e.floor][B_Cab] = false
 	default:
-		return false
 	}
 }
 
@@ -139,24 +141,24 @@ func requests_clearAtCurrentFloor(e *Elevator) {
 	case CV_All:
 		//not relevant
 	case CV_InDirn:
-		e.requests[e.floor][B_Cab] = 0
+		e.requests[e.floor][B_Cab] = false
 		switch e.dirn {
 		case D_Up:
-			if !requests_above(e) && (e.requests[e.floor][B_HallUp] == 0) {
-				e.requests[e.floor][B_HallDown] = 0
+			if !requests_above(e) && (!e.requests[e.floor][B_HallUp]) {
+				e.requests[e.floor][B_HallDown] = false
 			}
-			e.requests[e.floor][B_HallUp] = 0
+			e.requests[e.floor][B_HallUp] = false
 		case D_Down:
-			if !requests_below(e) && (e.requests[e.floor][B_HallDown] == 0) {
-				e.requests[e.floor][B_HallUp] = 0
+			if !requests_below(e) && (!e.requests[e.floor][B_HallDown]) {
+				e.requests[e.floor][B_HallUp] = false
 			}
-			e.requests[e.floor][B_HallDown] = 0
+			e.requests[e.floor][B_HallDown] = false
 		case D_Stop:
-			e.requests[e.floor][B_HallUp] = 0
-			e.requests[e.floor][B_HallDown] = 0
+			e.requests[e.floor][B_HallUp] = false
+			e.requests[e.floor][B_HallDown] = false
 		default:
-			e.requests[e.floor][B_HallUp] = 0
-			e.requests[e.floor][B_HallDown] = 0
+			e.requests[e.floor][B_HallUp] = false
+			e.requests[e.floor][B_HallDown] = false
 		}
 
 	default:

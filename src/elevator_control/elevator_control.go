@@ -1,7 +1,6 @@
 package elevator_control
 
 import (
-	"Elevator-project/src/elevio"
 	"time"
 )
 
@@ -12,7 +11,7 @@ const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
 const HARDWARE_ADDR = "localhost:15657"
 
-func Elevator_control(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
+func Elevator_control(assigner_assignedOrders chan [N_FLOORS][N_BUTTONS]bool, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
 	println("Elevator control started!")
 
 	// Needed for initing timer!
@@ -23,11 +22,9 @@ func Elevator_control(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, 
 
 	for {
 		select {
-		case a := <-drv_buttons:
+		case a := <-assigner_assignedOrders:
 
-			btn_floor := a.Floor
-			btn_type := Button(a.Button)
-			fsm_onRequestButtonPress(btn_floor, btn_type)
+			fsm_onRequestUpdate(a)
 
 		case a := <-drv_floors:
 

@@ -16,7 +16,7 @@ func fsm_init() {
 func setAllLights(es *Elevator) {
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			io_setButtonLamp(Button(btn), floor, elevator.requests[floor][btn] != 0)
+			io_setButtonLamp(Button(btn), floor, elevator.requests[floor][btn])
 		}
 	}
 }
@@ -27,24 +27,18 @@ func fsm_onInitBetweenFloors() {
 	elevator.behaviour = EB_Moving
 }
 
-func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
+func fsm_onRequestUpdate(a [N_FLOORS][N_BUTTONS]bool) {
 	fmt.Println("--------------")
 	fmt.Println("Jumping into [fsm_onRequestButtonPress]")
 	elevator_print(elevator)
 
+	elevator.requests = a
+
 	switch elevator.behaviour {
 	case EB_DoorOpen, EB_Obstructed:
-		if requests_shouldClearImmediately(elevator, btn_floor, btn_type) {
-			door_timer.Reset(elevator.config.doorOpenDuration_s)
-		} else {
-			elevator.requests[btn_floor][btn_type] = 1
-		}
-
-	case EB_Moving:
-		elevator.requests[btn_floor][btn_type] = 1
+		requests_shouldClearImmediately(elevator)
 
 	case EB_Idle:
-		elevator.requests[btn_floor][btn_type] = 1
 		a := requests_nextAction(elevator)
 
 		elevator.dirn = a.dirn
