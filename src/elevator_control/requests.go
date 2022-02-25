@@ -118,21 +118,22 @@ func requests_shouldStop(e *Elevator) bool {
 }
 
 func requests_shouldClearImmediately(e *Elevator, btn_floor int, btn_type Button) bool {
+	fmt.Println("SHOULD CLEAR: ")
 	switch e.config.clearRequestVariant {
 	case CV_All:
 		return e.floor == btn_floor
 	case CV_InDirn:
-		return (e.floor == btn_floor) &&
-			((e.dirn == D_Up && btn_type == B_HallUp) ||
-				(e.dirn == D_Down && btn_type == B_HallDown) ||
-				e.dirn == D_Stop ||
-				btn_type == B_Cab)
+		shouldClear := ((e.floor == btn_floor) && ((e.dirn == D_Up && btn_type == B_HallUp) ||
+			(e.dirn == D_Down && btn_type == B_HallDown) ||
+			e.dirn == D_Stop ||
+			btn_type == B_Cab))
+		return shouldClear
 	default:
 		return false
 	}
 }
 
-func requests_clearAtCurrentFloor(e *Elevator) *Elevator {
+func requests_clearAtCurrentFloor(e *Elevator) {
 
 	switch e.config.clearRequestVariant {
 	case CV_All:
@@ -151,6 +152,8 @@ func requests_clearAtCurrentFloor(e *Elevator) *Elevator {
 			}
 			e.requests[e.floor][B_HallDown] = 0
 		case D_Stop:
+			e.requests[e.floor][B_HallUp] = 0
+			e.requests[e.floor][B_HallDown] = 0
 		default:
 			e.requests[e.floor][B_HallUp] = 0
 			e.requests[e.floor][B_HallDown] = 0
@@ -158,5 +161,4 @@ func requests_clearAtCurrentFloor(e *Elevator) *Elevator {
 
 	default:
 	}
-	return e
 }

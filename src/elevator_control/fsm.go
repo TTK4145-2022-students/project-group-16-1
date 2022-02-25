@@ -36,16 +36,18 @@ func fsm_onInitBetweenFloors() {
 }
 
 func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
+	fmt.Println("--------------")
 	fmt.Println("Jumping into [fsm_onRequestButtonPress]")
-	fmt.Println("\nIncoming state:")
 	elevator_print(elevator)
 
 	switch elevator.behaviour {
 	case EB_DoorOpen:
 		if requests_shouldClearImmediately(elevator, btn_floor, btn_type) {
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+		} else {
+			elevator.requests[btn_floor][btn_type] = 1
 		}
-		elevator.requests[btn_floor][btn_type] = 1
+
 	case EB_Moving:
 		elevator.requests[btn_floor][btn_type] = 1
 
@@ -59,7 +61,7 @@ func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 		case EB_DoorOpen:
 			io_setDoorOpenLamp(true)
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
-			elevator = requests_clearAtCurrentFloor(elevator)
+			requests_clearAtCurrentFloor(elevator)
 		case EB_Moving:
 			io_setMotorDirection(elevator.dirn)
 		case EB_Idle:
@@ -69,11 +71,13 @@ func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 	}
 	setAllLights(elevator)
 
-	fmt.Println("\nNew state:")
+	fmt.Println("New state:")
 	elevator_print(elevator)
+	fmt.Println("--------------")
 }
 
 func fsm_onFloorArrival(newFloor int) {
+	fmt.Println("--------------")
 	fmt.Println("Jumping into [fsm_onFloorArrival]")
 	elevator_print(elevator)
 
@@ -86,18 +90,18 @@ func fsm_onFloorArrival(newFloor int) {
 		if requests_shouldStop(elevator) {
 			io_setMotorDirection(D_Stop)
 			io_setDoorOpenLamp(true)
-			elevator := requests_clearAtCurrentFloor(elevator)
+			requests_clearAtCurrentFloor(elevator)
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 			setAllLights(elevator)
-			fmt.Println("Setting elevator behaviour")
 			elevator.behaviour = EB_DoorOpen
 
 		}
 	default:
 	}
 
-	fmt.Println("\nNew state:")
+	fmt.Println("New state:")
 	elevator_print(elevator)
+	fmt.Println("--------------")
 }
 
 func fsm_onDoorTimeout() {
@@ -112,7 +116,7 @@ func fsm_onDoorTimeout() {
 		switch elevator.behaviour {
 		case EB_DoorOpen:
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
-			elevator := requests_clearAtCurrentFloor(elevator)
+			requests_clearAtCurrentFloor(elevator)
 			setAllLights(elevator)
 		case EB_Moving:
 			io_setDoorOpenLamp(false)
@@ -123,6 +127,7 @@ func fsm_onDoorTimeout() {
 		}
 	default:
 	}
-	fmt.Println("\nNew state:")
+	fmt.Println("New state:")
 	elevator_print(elevator)
+	fmt.Println("--------------")
 }
