@@ -5,9 +5,17 @@ import (
 	"time"
 )
 
+var elevator *Elevator
+var door_timer *time.Timer
+
+const N_FLOORS = 4 //REMOVE THIS
+const N_BUTTONS = 3
+const HARDWARE_ADDR = "localhost:15657"
+
 func Elevator_control(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
 	println("Elevator control started!")
 
+	// Needed for initing timer!
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
 
@@ -30,11 +38,6 @@ func Elevator_control(drv_buttons chan elevio.ButtonEvent, drv_floors chan int, 
 
 		case <-drv_stop:
 
-			for f := 0; f < N_FLOORS; f++ {
-				for b := elevio.ButtonType(0); b < 3; b++ {
-					elevio.SetButtonLamp(b, f, false)
-				}
-			}
 		case <-door_timer.C:
 			fsm_onDoorTimeout()
 		}

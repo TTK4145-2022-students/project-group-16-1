@@ -2,15 +2,7 @@ package elevator_control
 
 import (
 	"fmt"
-	"time"
 )
-
-var elevator *Elevator
-var door_timer *time.Timer
-
-const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
-const HARDWARE_ADDR = "localhost:15657"
 
 func fsm_init() {
 	fmt.Println("Initialising FSM: ")
@@ -43,7 +35,7 @@ func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 	switch elevator.behaviour {
 	case EB_DoorOpen, EB_Obstructed:
 		if requests_shouldClearImmediately(elevator, btn_floor, btn_type) {
-			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+			door_timer.Reset(elevator.config.doorOpenDuration_s)
 		} else {
 			elevator.requests[btn_floor][btn_type] = 1
 		}
@@ -60,7 +52,7 @@ func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 		switch elevator.behaviour {
 		case EB_DoorOpen:
 			io_setDoorOpenLamp(true)
-			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+			door_timer.Reset(elevator.config.doorOpenDuration_s)
 			requests_clearAtCurrentFloor(elevator)
 		case EB_Moving:
 			io_setMotorDirection(elevator.dirn)
@@ -91,7 +83,7 @@ func fsm_onFloorArrival(newFloor int) {
 			io_setMotorDirection(D_Stop)
 			io_setDoorOpenLamp(true)
 			requests_clearAtCurrentFloor(elevator)
-			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+			door_timer.Reset(elevator.config.doorOpenDuration_s)
 			setAllLights(elevator)
 			elevator.behaviour = EB_DoorOpen
 
@@ -115,7 +107,7 @@ func fsm_onDoorTimeout() {
 
 		switch elevator.behaviour {
 		case EB_DoorOpen:
-			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+			door_timer.Reset(elevator.config.doorOpenDuration_s)
 			requests_clearAtCurrentFloor(elevator)
 			setAllLights(elevator)
 		case EB_Idle, EB_Moving:
@@ -123,7 +115,7 @@ func fsm_onDoorTimeout() {
 			io_setMotorDirection(elevator.dirn)
 		}
 	case EB_Obstructed:
-		door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+		door_timer.Reset(elevator.config.doorOpenDuration_s)
 	default:
 	}
 	fmt.Println("New state:")
