@@ -11,6 +11,8 @@ const (
 	EB_Idle ElevatorBehaviour = iota
 	EB_DoorOpen
 	EB_Moving
+	EB_Obstructed
+	EB_StopButton
 )
 
 type ClearRequestVariant int
@@ -34,8 +36,8 @@ type config struct {
 }
 
 func (ev ElevatorBehaviour) String() string {
-	behaviours := [...]string{"EB_Idle", "EB_DoorOpen", "EB_moving"}
-	if ev < EB_Idle || ev > EB_Moving {
+	behaviours := [...]string{"EB_Idle", "EB_DoorOpen", "EB_oving", "EB_Obstructed", "EB_StopBtn"}
+	if ev < EB_Idle || ev > EB_StopButton {
 		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(ev))
 	}
 	return behaviours[ev]

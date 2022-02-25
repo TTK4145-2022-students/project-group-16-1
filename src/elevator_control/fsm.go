@@ -41,7 +41,7 @@ func fsm_onRequestButtonPress(btn_floor int, btn_type Button) {
 	elevator_print(elevator)
 
 	switch elevator.behaviour {
-	case EB_DoorOpen:
+	case EB_DoorOpen, EB_Obstructed:
 		if requests_shouldClearImmediately(elevator, btn_floor, btn_type) {
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 		} else {
@@ -118,16 +118,36 @@ func fsm_onDoorTimeout() {
 			door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
 			requests_clearAtCurrentFloor(elevator)
 			setAllLights(elevator)
-		case EB_Moving:
+		case EB_Idle, EB_Moving:
 			io_setDoorOpenLamp(false)
 			io_setMotorDirection(elevator.dirn)
-		case EB_Idle:
-			io_setDoorOpenLamp(false)
-			io_setMotorDirection(elevator.dirn)
+		}
+	case EB_Obstructed:
+		door_timer = time.NewTimer(elevator.config.doorOpenDuration_s)
+	default:
+	}
+	fmt.Println("New state:")
+	elevator_print(elevator)
+	fmt.Println("--------------")
+}
+
+func fsm_onObstruction(obstructed bool) {
+	fmt.Println("--------------")
+	fmt.Println("Jumping into [fsm_onObstruction")
+	elevator_print(elevator)
+	switch elevator.behaviour {
+	case EB_DoorOpen:
+		if obstructed {
+			elevator.behaviour = EB_Obstructed
+		}
+	case EB_Obstructed:
+		if !obstructed {
+			elevator.behaviour = EB_DoorOpen
 		}
 	default:
 	}
 	fmt.Println("New state:")
 	elevator_print(elevator)
 	fmt.Println("--------------")
+
 }
