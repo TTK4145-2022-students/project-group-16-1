@@ -11,7 +11,7 @@ const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
 const HARDWARE_ADDR = "localhost:15657"
 
-func Elevator_control(assigner_assignedOrders chan [N_FLOORS][N_BUTTONS]bool, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
+func ElevatorControl(assigner_assignedOrders chan [N_FLOORS][N_BUTTONS]bool, drv_floors chan int, drv_obstr chan bool, drv_stop chan bool) {
 	println("Elevator control started!")
 
 	// Needed for initing timer!
