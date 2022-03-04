@@ -7,9 +7,9 @@ import (
 )
 
 type OrdersAndStateMessage struct {
-	Id     int
-	State  Elevator
-	Orders Orders
+	Id int
+	// State  Elevator
+	// Orders Orders
 }
 
 func Network(id string, oasTX chan OrdersAndStateMessage, oasRX chan OrdersAndStateMessage) {
