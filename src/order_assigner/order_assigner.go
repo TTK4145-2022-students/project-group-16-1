@@ -28,13 +28,14 @@ func OrderAssigner(assigner_assignedOrders chan [N_FLOORS][N_BUTTONS]bool,
 	osp_elevatorState chan map[string]order_state_pub.ElevatorState, id string) {
 
 	var confirmed_orders order_redundancy_manager.ConfirmedOrders
-	// var elevator_states map[string]order_state_pub.ElevatorState
-
-	// confirmed_orders = <-orm_confirmedOrders
-	// elevator_states = <-osp_elevatorState
 	elevator_states := make(map[string]order_state_pub.ElevatorState)
-	elevator_states["one"] = order_state_pub.ElevatorState{"moving", 2, "up"}
-	elevator_states["two"] = order_state_pub.ElevatorState{"idle", 0, "stop"}
+
+	confirmed_orders = <-orm_confirmedOrders
+	elevator_states = <-osp_elevatorState
+	local_assigned_orders := assign(confirmed_orders, elevator_states, id)
+	assigner_assignedOrders <- local_assigned_orders
+	// elevator_states["one"] = order_state_pub.ElevatorState{"moving", 2, "up"}
+	// elevator_states["two"] = order_state_pub.ElevatorState{"idle", 0, "stop"}
 
 	for {
 		select {
