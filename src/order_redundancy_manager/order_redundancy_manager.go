@@ -33,11 +33,14 @@ type ConfirmedOrders struct {
 	CabCalls  map[string][N_FLOORS]bool
 }
 
-func OrderRedundancyManager(orm_confirmedOrders chan ConfirmedOrders,
-	orm_remoteOrders chan Orders,
-	osr_aliveElevators chan map[string]bool,
-	orm_localOrders chan Orders, drv_buttons chan elevio.ButtonEvent,
-	ec_localOrderServed chan elevio.ButtonEvent, id string) {
+func OrderRedundancyManager(
+	orm_remoteOrders <-chan Orders,
+	osr_aliveElevators <-chan map[string]bool,
+	drv_buttons <-chan elevio.ButtonEvent,
+	ec_localOrderServed <-chan elevio.ButtonEvent,
+	orm_confirmedOrders chan<- ConfirmedOrders,
+	orm_localOrders chan<- Orders,
+	id string) {
 
 	num_alive_elevators = 1
 	alive_elevators = make(map[string]bool)
@@ -48,7 +51,20 @@ func OrderRedundancyManager(orm_confirmedOrders chan ConfirmedOrders,
 	for {
 		select {
 		case alive_elevators = <-osr_aliveElevators:
-			fsm_aliveElevatorsRecieved(id)
+			num_alive_elevators := fsm_getNumAliveElevators(id)
+			if num_alive_elevators == 1 { //DISCONNECTED
+				for floor := 0; floor < N_FLOORS; floor++ {
+					if orders.cabCalls[id][floor] == OS_Unconfirmed {
+						orders.cabCalls[id][floor] = OS_Confirmed
+					}
+					if orders.hallCalls[floor][0] == OS_None || orders.hallCalls[floor][0] == OS_Unconfirmed {
+						orders.hallCalls[floor][0] = OS_Unknown
+					}
+					if orders.hallCalls[floor][1] == OS_None || orders.hallCalls[floor][1] == OS_Unconfirmed {
+						orders.hallCalls[floor][1] = OS_Unknown
+					}
+				}
+			}
 		case remoteOrders := <-orm_remoteOrders:
 			fsm_remoteOrdersRecieved(remoteOrders, id)
 		case button_event := <-drv_buttons:
@@ -155,7 +171,7 @@ func fsm_remoteOrdersRecieved(remoteOrders Orders, local_id string) {
 	}
 }
 
-func fsm_aliveElevatorsRecieved(self_id string) {
+func fsm_getNumAliveElevators(self_id string) int{
 	alive_counter := 0
 	for id, isAlive := range alive_elevators {
 		if isAlive {
@@ -171,20 +187,7 @@ func fsm_aliveElevatorsRecieved(self_id string) {
 			}
 		}
 	}
-	num_alive_elevators = alive_counter
-	if num_alive_elevators == 1 { //DISCONNECTED
-		for floor := 0; floor < N_FLOORS; floor++ {
-			if orders.cabCalls[self_id][floor] == OS_Unconfirmed {
-				orders.cabCalls[self_id][floor] = OS_Confirmed
-			}
-			if orders.hallCalls[floor][0] == OS_None || orders.hallCalls[floor][0] == OS_Unconfirmed {
-				orders.hallCalls[floor][0] = OS_Unknown
-			}
-			if orders.hallCalls[floor][1] == OS_None || orders.hallCalls[floor][1] == OS_Unconfirmed {
-				orders.hallCalls[floor][1] = OS_Unknown
-			}
-		}
-	}
+	return alive_counter
 }
 
 func fsm_localOrderServed(served_order elevio.ButtonEvent, id string) {

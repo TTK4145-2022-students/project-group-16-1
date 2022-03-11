@@ -35,6 +35,12 @@ type config struct {
 	doorOpenDuration_s  time.Duration
 }
 
+type ElevatorState struct {
+	Behaviour string
+	Floor     int
+	Dirn      string
+}
+
 func (ev ElevatorBehaviour) String() string {
 	behaviours := [...]string{"EB_Idle", "EB_DoorOpen", "EB_oving", "EB_Obstructed", "EB_StopBtn"}
 	if ev < EB_Idle || ev > EB_StopButton {

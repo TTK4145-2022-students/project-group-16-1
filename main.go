@@ -3,9 +3,12 @@ package main
 import (
 	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/elevio"
+	"Elevator-project/src/network"
+	"Elevator-project/src/network/peers"
 	"Elevator-project/src/order_assigner"
 	"Elevator-project/src/order_redundancy_manager"
 	"Elevator-project/src/order_state_pub"
+	"Elevator-project/src/order_state_reciever"
 	"flag"
 )
 
@@ -41,13 +44,16 @@ func main() {
 
 	// //Network
 	// oasTx := make(chan network.OrdersAndStateMessage)
-	// oasRx := make(chan network.OrdersAndStateMessage)
+	net_peersUpdate := make(chan peers.PeerUpdate)
+	net_orderStateRx := make(chan network.OrdersAndStateMessage)
 
 	// Order State Publisher
 	osp_elevatorState := make(chan map[string]order_state_pub.ElevatorState)
 
 	// Order State Reciever
-	osr_alliveElevators := make(chan map[string]bool)
+	osr_newElevDetected := make(chan string)
+	osr_elevsLost := make(chan []string)
+	osr_disconnected := make(chan bool)
 
 	elevio.Init(elevator_control.HARDWARE_ADDR, elevator_control.N_FLOORS)
 	go elevio.PollButtons(drv_buttons)
@@ -55,7 +61,7 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go order_assigner.OrderAssigner(assigner_assignedOrders, orm_confirmedOrders, osp_elevatorState, id)
-
+	go order_state_reciever.OrderStateReciever(net_peersUpdate, net_orderStateRx, osr_newElevDetected, osr_elevsLost, osr_disconnected, orm_remoteOrders )
 	go elevator_control.ElevatorControl(assigner_assignedOrders, drv_floors, drv_obstr, drv_stop)
 
 	// go network.Network(id, oasTx, oasRx)

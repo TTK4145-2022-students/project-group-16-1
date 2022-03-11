@@ -1,9 +1,14 @@
 package order_state_pub
 
-type ElevatorState struct {
-	Behaviour string
-	Floor     int
-	Dirn      string
+import (
+	"Elevator-project/src/elevator_control"
+	"Elevator-project/src/order_redundancy_manager"
+)
+
+type OrdersAndStateMSG struct {
+	Id     string
+	State  elevator_control.ElevatorState
+	Orders order_redundancy_manager.Orders
 }
 
 func order_state_pub() {
