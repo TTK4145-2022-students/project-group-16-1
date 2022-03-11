@@ -11,10 +11,10 @@ const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
 
 type JsonIdState struct {
-	Behaviour   string         `json:"behaviour"`
-	Floor       int            `json:"floor"`
-	Direction   string         `json:"direction"`
-	CabRequests [N_FLOORS]bool `json:"cabRequests"`
+	Behaviour   string          `json:"behaviour"`
+	Floor       int             `json:"floor"`
+	Direction   string          `json:"direction"`
+	CabRequests *[N_FLOORS]bool `json:"cabRequests"`
 }
 
 type JsonProxy struct {

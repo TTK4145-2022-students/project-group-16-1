@@ -11,8 +11,8 @@ type Dirn int
 
 const (
 	D_Down Dirn = -1
-	D_Stop      = 0
-	D_Up        = 1
+	D_Stop Dirn = 0
+	D_Up   Dirn = 1
 )
 
 func (dirn Dirn) String() string {
@@ -27,13 +27,9 @@ type Button int
 
 const (
 	B_HallUp   Button = 0
-	B_HallDown        = 1
-	B_Cab             = 2
+	B_HallDown Button = 1
+	B_Cab      Button = 2
 )
-
-func initElevIO() {
-	elevio.Init(HARDWARE_ADDR, N_FLOORS)
-}
 
 func io_setMotorDirection(dir Dirn) {
 	elevio.SetMotorDirection(elevio.MotorDirection(dir))
@@ -53,4 +49,13 @@ func io_setDoorOpenLamp(value bool) {
 
 func _setStopLamp(value bool) {
 	elevio.SetStopLamp(value)
+}
+
+func createElevatorStateMSG() ElevatorState {
+	var elevator_state ElevatorState
+	elevator_state.Behaviour = elevator.behaviour.String()
+	elevator_state.Dirn = elevator.dirn.String()
+	elevator_state.Floor = elevator.floor
+	elevator_state.Id = id
+	return elevator_state
 }
