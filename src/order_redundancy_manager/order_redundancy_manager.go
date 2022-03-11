@@ -8,9 +8,6 @@ const N_FLOORS = 4 //REMOVE THIS
 const N_BUTTONS = 3
 const HARDWARE_ADDR = "localhost:15657"
 
-var alive_elevators map[string]bool
-var num_alive_elevators int
-var orders Orders
 
 type OrderState int
 
@@ -23,7 +20,7 @@ const (
 
 type Orders struct {
 	hallCalls         [N_FLOORS][2]OrderState
-	hallCallConsensus [N_FLOORS][2][]string
+	hallCallConsensus map[string][N_FLOORS][2]bool
 	cabCalls          map[string]*[N_FLOORS]OrderState
 	cabCallConsensus  map[string]*[N_FLOORS][]string
 }
@@ -35,21 +32,44 @@ type ConfirmedOrders struct {
 
 func OrderRedundancyManager(
 	orm_remoteOrders <-chan Orders,
-	osr_aliveElevators <-chan map[string]bool,
 	drv_buttons <-chan elevio.ButtonEvent,
 	ec_localOrderServed <-chan elevio.ButtonEvent,
+	orm_newElevDetected <-chan string,
+	orm_elevsLost <-chan []string,
+	orm_disconnected <-chan bool,
 	orm_confirmedOrders chan<- ConfirmedOrders,
 	orm_localOrders chan<- Orders,
 	id string) {
-
-	num_alive_elevators = 1
-	alive_elevators = make(map[string]bool)
-	alive_elevators[id] = true
+	
+	var alive_elevators []string
+	var orders Orders
 
 	orders.cabCalls = make(map[string]*[N_FLOORS]OrderState)
 	orders.cabCalls[id] = &[N_FLOORS]OrderState{}
 	for {
 		select {
+		case new_elev := <-orm_newElevDetected:
+			alive_elevators := append(alive_elevators,new_elev)
+		case lost_elevs := <-orm_elevsLost:
+			for i := range lost_elev {
+				alive_elevators = remove(alive_elevators,lost_elevs[i])
+				if orders.cabCalls[lost_elevs[i]] == OS_None{
+					orders.cabCalls[lost_elevs[i]] = OS_Unknown
+				}
+				for id, order := range orders.hallCallConsensus{
+					orders.hallCallConsensus[id] = [N_FLOORS][2]bool{false}
+				}
+			}
+		case 
+
+
+		
+
+			alive_elevators := delete(alive_elevators,lost_elevs)
+
+
+
+
 		case alive_elevators = <-osr_aliveElevators:
 			num_alive_elevators := fsm_getNumAliveElevators(id)
 			if num_alive_elevators == 1 { //DISCONNECTED
@@ -109,10 +129,7 @@ func fsm_remoteOrdersRecieved(remoteOrders Orders, local_id string) {
 				}
 			}
 
-			switch orders.cabCalls[id][floor] {
-			case OS_Unknown:
-				orders.cabCalls[id][floor] = remoteOrders.cabCalls[id][floor]
-			case OS_Confirmed:
+			switch orelevator_statesonfirmed:
 				if remoteOrders.cabCalls[id][floor] != OS_Unknown {
 					orders.cabCalls[id][floor] = remoteOrders.cabCalls[id][floor]
 				}
@@ -218,4 +235,13 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func remove(s []string, r string) []string {
+    for i, v := range s {
+        if v == r {
+            return append(s[:i], s[i+1:]...)
+        }
+    }
+    return s
 }

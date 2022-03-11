@@ -1,10 +1,9 @@
 package order_assigner
 
 import (
+	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/order_redundancy_manager"
-	"Elevator-project/src/order_state_pub"
 	"encoding/json"
-	"log"
 	"os/exec"
 )
 
@@ -23,39 +22,57 @@ type JsonProxy struct {
 	States       map[string]JsonIdState `json:"states"`
 }
 
-func OrderAssigner(assigner_assignedOrders chan [N_FLOORS][N_BUTTONS]bool,
-	orm_confirmedOrders chan order_redundancy_manager.ConfirmedOrders,
-	osp_elevatorState chan map[string]order_state_pub.ElevatorState, id string) {
+func OrderAssigner(
+	orm_confirmedOrders <-chan order_redundancy_manager.ConfirmedOrders,
+	net_elevatorState <-chan elevator_control.ElevatorState,
+	oa_newElevDetected <-chan string,
+	oa_elevsLost <-chan []string,
+	oa_assignedOrders chan<- [N_FLOORS][N_BUTTONS]bool,
+	id string) {
 
 	var confirmed_orders order_redundancy_manager.ConfirmedOrders
-	elevator_states := make(map[string]order_state_pub.ElevatorState)
-
-	confirmed_orders = <-orm_confirmedOrders
-	elevator_states = <-osp_elevatorState
-	local_assigned_orders := assign(confirmed_orders, elevator_states, id)
-	assigner_assignedOrders <- local_assigned_orders
-	// elevator_states["one"] = order_state_pub.ElevatorState{"moving", 2, "up"}
-	// elevator_states["two"] = order_state_pub.ElevatorState{"idle", 0, "stop"}
+	elevator_states := make(map[string]elevator_control.ElevatorState)
 
 	for {
 		select {
 		case confirmed_orders = <-orm_confirmedOrders:
-			local_assigned_orders := assign(confirmed_orders, elevator_states, id)
-			assigner_assignedOrders <- local_assigned_orders
-			print("conf orders recieved")
-		case elevator_states = <-osp_elevatorState:
-			local_assigned_orders := assign(confirmed_orders, elevator_states, id)
-			assigner_assignedOrders <- local_assigned_orders
-			print("state recieved")
+			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
+			if !err {
+				oa_assignedOrders <- local_assigned_orders
+			}
 
-		default:
+		case new_elev := <-oa_newElevDetected:
+			elevator_states[new_elev] = elevator_control.ElevatorState{}
+			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
+			if !err {
+				oa_assignedOrders <- local_assigned_orders
+			}
 
+		case lost_elev := <-oa_elevsLost:
+			for i := range lost_elev {
+				delete(elevator_states, lost_elev[i])
+			}
+			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
+			if !err {
+				oa_assignedOrders <- local_assigned_orders
+			}
+
+		case state := <-net_elevatorState:
+			if prev_state, err := elevator_states[state.Id]; !err {
+				if prev_state != state {
+					elevator_states[state.Id] = state
+					local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
+					if !err {
+						oa_assignedOrders <- local_assigned_orders
+					}
+				}
+			}
 		}
 	}
 
 }
 
-func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[string]order_state_pub.ElevatorState) []byte {
+func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[string]elevator_control.ElevatorState) []byte {
 	var msg JsonProxy
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]JsonIdState)
@@ -69,17 +86,19 @@ func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[st
 }
 
 func assign(orders order_redundancy_manager.ConfirmedOrders,
-	states map[string]order_state_pub.ElevatorState, id string) [N_FLOORS][N_BUTTONS]bool {
+	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BUTTONS]bool, bool) {
 
 	json_msg := generateJson(orders, states)
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
-		log.Fatal(err)
+		// Return dummy array and err = true
+		return [N_FLOORS][N_BUTTONS]bool{}, true
 	}
 	var msg map[string][N_FLOORS][N_BUTTONS]bool
 	err = json.Unmarshal(assigned_orders, &msg)
 	if err != nil {
-		log.Fatal(err)
+		// Return dummy array and err = true
+		return [N_FLOORS][N_BUTTONS]bool{}, true
 	}
-	return msg[id]
+	return msg[id], false
 }

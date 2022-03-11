@@ -1,14 +1,12 @@
 package main
 
 import (
+	"Elevator-project/src/alive_listener"
 	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/elevio"
-	"Elevator-project/src/network"
 	"Elevator-project/src/network/peers"
 	"Elevator-project/src/order_assigner"
 	"Elevator-project/src/order_redundancy_manager"
-	"Elevator-project/src/order_state_pub"
-	"Elevator-project/src/order_state_reciever"
 	"flag"
 )
 
@@ -45,23 +43,21 @@ func main() {
 	// //Network
 	// oasTx := make(chan network.OrdersAndStateMessage)
 	net_peersUpdate := make(chan peers.PeerUpdate)
-	net_orderStateRx := make(chan network.OrdersAndStateMessage)
 
-	// Order State Publisher
-	osp_elevatorState := make(chan map[string]order_state_pub.ElevatorState)
+	orm_newElevDetected := make(chan string)
+	orm_elevsLost := make(chan []string)
+	orm_disconnected := make(chan bool)
 
-	// Order State Reciever
-	osr_newElevDetected := make(chan string)
-	osr_elevsLost := make(chan []string)
-	osr_disconnected := make(chan bool)
+	oa_newElevDetected := make(chan string)
+	oa_elevsLost := make(chan []string)
 
 	elevio.Init(elevator_control.HARDWARE_ADDR, elevator_control.N_FLOORS)
+	go alive_listener.AliveListener(net_peersUpdate, orm_newElevDetected, orm_elevsLost, orm_disconnected, oa_newElevDetected, oa_elevsLost)
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go order_assigner.OrderAssigner(assigner_assignedOrders, orm_confirmedOrders, osp_elevatorState, id)
-	go order_state_reciever.OrderStateReciever(net_peersUpdate, net_orderStateRx, osr_newElevDetected, osr_elevsLost, osr_disconnected, orm_remoteOrders )
 	go elevator_control.ElevatorControl(assigner_assignedOrders, drv_floors, drv_obstr, drv_stop)
 
 	// go network.Network(id, oasTx, oasRx)
