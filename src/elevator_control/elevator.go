@@ -43,7 +43,7 @@ type ElevatorState struct {
 }
 
 func (ev ElevatorBehaviour) String() string {
-	behaviours := [...]string{"EB_Idle", "EB_DoorOpen", "EB_oving", "EB_Obstructed", "EB_StopBtn"}
+	behaviours := [...]string{"idle", "doorOpen", "moving", "obstructed", "stopBtn"}
 	if ev < EB_Idle || ev > EB_StopButton {
 		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(ev))
 	}

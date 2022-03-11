@@ -26,20 +26,26 @@ type Orders struct {
 	CabCalls          map[string]*[N_FLOORS]OrderState
 }
 
+type OrdersMSG struct {
+	Id        string
+	HallCalls [N_FLOORS][2]OrderState
+	CabCalls  map[string][N_FLOORS]OrderState
+}
+
 type ConfirmedOrders struct {
 	HallCalls [N_FLOORS][2]bool
 	CabCalls  map[string]*[N_FLOORS]bool
 }
 
 func OrderRedundancyManager(
-	orm_remoteOrders <-chan Orders,
+	orm_remoteOrders <-chan OrdersMSG,
 	drv_buttons <-chan elevio.ButtonEvent,
 	ec_localOrderServed <-chan elevio.ButtonEvent,
 	orm_newElevDetected <-chan string,
 	orm_elevsLost <-chan []string,
 	orm_disconnected <-chan bool,
 	orm_confirmedOrders chan<- ConfirmedOrders,
-	orm_localOrders chan<- Orders,
+	orm_localOrders chan<- OrdersMSG,
 	id string) {
 
 	var alive_elevators []string
@@ -81,7 +87,6 @@ func OrderRedundancyManager(
 			}
 		case remoteOrders := <-orm_remoteOrders:
 			// Check if elevator is alive
-
 			if !contains(alive_elevators, remoteOrders.Id) {
 				break
 			}
@@ -160,10 +165,22 @@ func OrderRedundancyManager(
 				}
 			}
 		case <-timeout:
-			orm_localOrders <- orders
+			orders_msg := createOrdersMSG(orders)
+			orm_localOrders <- orders_msg
 			timeout = time.After(INTERVAL)
 		}
 	}
+}
+
+func createOrdersMSG(orders Orders) OrdersMSG {
+	var orders_msg OrdersMSG
+	orders_msg.Id = orders.Id
+	orders_msg.HallCalls = orders.HallCalls
+	orders_msg.CabCalls = make(map[string][N_FLOORS]OrderState)
+	for id, val := range orders.CabCalls {
+		orders_msg.CabCalls[id] = *val
+	}
+	return orders_msg
 }
 
 func fsm_getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOrders {

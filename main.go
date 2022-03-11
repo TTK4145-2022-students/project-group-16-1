@@ -39,8 +39,8 @@ func main() {
 	oa_elevsLost := make(chan []string)
 	// Order redundancy
 	orm_confirmedOrders := make(chan order_redundancy_manager.ConfirmedOrders)
-	orm_remoteOrders := make(chan order_redundancy_manager.Orders)
-	orm_localOrders := make(chan order_redundancy_manager.Orders)
+	orm_remoteOrders := make(chan order_redundancy_manager.OrdersMSG)
+	orm_localOrders := make(chan order_redundancy_manager.OrdersMSG)
 
 	// //Network
 	net_peersUpdate := make(chan peers.PeerUpdate)
@@ -58,7 +58,7 @@ func main() {
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go order_assigner.OrderAssigner(orm_confirmedOrders, net_elevatorStateRX, oa_newElevDetected, oa_elevsLost, oa_assignedOrders, id)
-	go elevator_control.ElevatorControl(oa_assignedOrders, drv_floors, drv_obstr, drv_stop, net_elevatorStateTX, ec_localOrderServed)
+	go elevator_control.ElevatorControl(oa_assignedOrders, drv_floors, drv_obstr, drv_stop, net_elevatorStateTX, ec_localOrderServed, id)
 
 	go network.Network(id, net_peersUpdate, net_elevatorStateTX, net_elevatorStateRX, orm_localOrders, orm_remoteOrders)
 

@@ -20,15 +20,16 @@ func ElevatorControl(
 	drv_obstr <-chan bool,
 	drv_stop <-chan bool,
 	net_elevatorState chan<- ElevatorState,
-	ec_localOrderServed chan<- elevio.ButtonEvent) {
+	ec_localOrderServed chan<- elevio.ButtonEvent,
+	local_id string) {
 	println("Elevator control started!")
-
+	id = local_id
 	// Needed for initing timer!
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
 
 	fsm_init()
-	send_state_timeout := time.NewTimer(INTERVAL)
+	send_state_timeout := time.After(INTERVAL)
 
 	for {
 		select {
@@ -47,9 +48,10 @@ func ElevatorControl(
 
 		case <-door_timer.C:
 			fsm_onDoorTimeout()
-		case <-send_state_timeout.C:
+		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG()
 			net_elevatorState <- elevator_state
+			send_state_timeout = time.After(INTERVAL)
 		}
 	}
 }

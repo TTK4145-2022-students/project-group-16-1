@@ -16,7 +16,7 @@ const (
 )
 
 func (dirn Dirn) String() string {
-	dirnStrings := [...]string{"D_Down", "D_Stop", "D_Up"}
+	dirnStrings := [...]string{"down", "stop", "up"}
 	if dirn < D_Down || dirn > D_Up {
 		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(dirn))
 	}

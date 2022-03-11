@@ -33,9 +33,12 @@ func OrderAssigner(
 	var confirmed_orders order_redundancy_manager.ConfirmedOrders
 	elevator_states := make(map[string]elevator_control.ElevatorState)
 
+	elevator_states[id] = elevator_control.ElevatorState{}
+
 	for {
 		select {
 		case confirmed_orders = <-orm_confirmedOrders:
+
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
 				oa_assignedOrders <- local_assigned_orders
@@ -58,8 +61,10 @@ func OrderAssigner(
 			}
 
 		case state := <-net_elevatorState:
-			if prev_state, err := elevator_states[state.Id]; !err {
+			if prev_state, ok := elevator_states[state.Id]; ok {
+
 				if prev_state != state {
+
 					elevator_states[state.Id] = state
 					local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 					if !err {
@@ -87,8 +92,8 @@ func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[st
 
 func assign(orders order_redundancy_manager.ConfirmedOrders,
 	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BUTTONS]bool, bool) {
-
 	json_msg := generateJson(orders, states)
+
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
 		// Return dummy array and err = true

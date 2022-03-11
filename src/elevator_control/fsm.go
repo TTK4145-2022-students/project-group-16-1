@@ -29,7 +29,7 @@ func fsm_onInitBetweenFloors() {
 
 func fsm_onRequestUpdate(a [N_FLOORS][N_BUTTONS]bool) {
 	fmt.Println("--------------")
-	fmt.Println("Jumping into [fsm_onRequestButtonPress]")
+	fmt.Println("Jumping into [fsm_onRequestUpdate]")
 	elevator_print(elevator)
 
 	elevator.requests = a
@@ -40,7 +40,6 @@ func fsm_onRequestUpdate(a [N_FLOORS][N_BUTTONS]bool) {
 
 	case EB_Idle:
 		a := requests_nextAction(elevator)
-
 		elevator.dirn = a.dirn
 		elevator.behaviour = a.behaviour
 		switch elevator.behaviour {
@@ -80,7 +79,6 @@ func fsm_onFloorArrival(newFloor int) {
 			door_timer.Reset(elevator.config.doorOpenDuration_s)
 			setAllLights(elevator)
 			elevator.behaviour = EB_DoorOpen
-
 		}
 	default:
 	}

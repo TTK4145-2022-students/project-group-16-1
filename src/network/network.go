@@ -12,8 +12,8 @@ func Network(id string,
 	peerUpdateCh chan peers.PeerUpdate,
 	stateTX chan elevator_control.ElevatorState,
 	stateRX chan elevator_control.ElevatorState,
-	orderTX chan order_redundancy_manager.Orders,
-	orderRX chan order_redundancy_manager.Orders) {
+	orderTX chan order_redundancy_manager.OrdersMSG,
+	orderRX chan order_redundancy_manager.OrdersMSG) {
 
 	peerTxEnable := make(chan bool)
 	go peers.Transmitter(27773, id, peerTxEnable)
