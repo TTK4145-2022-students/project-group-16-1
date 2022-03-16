@@ -193,24 +193,6 @@ func barrierCheck(id string, floor int, btn int, orders Orders, alive_elevators 
 	return true
 }
 
-func fsm_onDisconnect(order_state OrderState) OrderState {
-	switch order_state {
-	case OS_Unconfirmed, OS_None:
-		return OS_Unknown
-	default:
-		return order_state
-	}
-}
-
-func fsm_remoteReceived(local_HC OrderState, remote_HC OrderState) OrderState {
-	if remote_HC > local_HC {
-		return remote_HC
-	} else {
-		return local_HC
-	}
-
-}
-
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {

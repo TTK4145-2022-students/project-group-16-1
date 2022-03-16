@@ -2,6 +2,7 @@ package elevator_control
 
 import (
 	"Elevator-project/src/elevio"
+	"fmt"
 	"time"
 )
 
@@ -34,12 +35,75 @@ func ElevatorControl(
 	for {
 		select {
 		case a := <-oa_ec_assignedOrders:
+			fmt.Println("--------------")
+			fmt.Println("Jumping into [fsm_onRequestUpdate]")
+			elevator_print(elevator)
 
-			fsm_onRequestUpdate(a)
+			elevator.requests = a
+			switch elevator.behaviour {
+			case EB_DoorOpen, EB_Obstructed:
+				should_clear_btns := requests_shouldClearImmediately(elevator)
+				for _, val := range should_clear_btns {
+					ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
 
-		case a := <-drv_ec_floor:
+				}
 
-			fsm_onFloorArrival(a)
+			case EB_Idle:
+				a := requests_nextAction(elevator)
+				elevator.dirn = a.dirn
+				elevator.behaviour = a.behaviour
+				switch elevator.behaviour {
+				case EB_DoorOpen:
+					io_setDoorOpenLamp(true)
+					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					should_clear_btns := requests_clearAtCurrentFloor(elevator)
+					for _, val := range should_clear_btns {
+						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
+
+					}
+				case EB_Moving:
+					io_setMotorDirection(elevator.dirn)
+				case EB_Idle:
+
+				}
+
+			}
+			setAllLights(elevator)
+
+			fmt.Println("New state:")
+			elevator_print(elevator)
+			fmt.Println("--------------")
+
+		case new_floor := <-drv_ec_floor:
+
+			fmt.Println("--------------")
+			fmt.Println("Jumping into [fsm_onFloorArrival]")
+			elevator_print(elevator)
+
+			elevator.floor = new_floor
+
+			io_setFloorIndicator(new_floor)
+
+			switch elevator.behaviour {
+			case EB_Moving:
+				if requests_shouldStop(elevator) {
+					io_setMotorDirection(D_Stop)
+					io_setDoorOpenLamp(true)
+					should_clear_btns := requests_clearAtCurrentFloor(elevator)
+					for _, val := range should_clear_btns {
+						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
+
+					}
+					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					setAllLights(elevator)
+					elevator.behaviour = EB_DoorOpen
+				}
+			default:
+			}
+
+			fmt.Println("New state:")
+			elevator_print(elevator)
+			fmt.Println("--------------")
 
 		case a := <-drv_ec_obstr:
 			fsm_onObstruction(a)
