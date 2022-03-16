@@ -46,7 +46,7 @@ func OrderRedundancyManager(
 	or_net_localOrders chan<- OrdersMSG,
 	id string) {
 
-	var alive_elevators []string
+	alive_elevators := []string{id}
 	var orders Orders
 
 	orders.Calls = make(map[string]*[N_BTN_TYPES][N_FLOORS]OrderState)
@@ -85,25 +85,24 @@ func OrderRedundancyManager(
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
-
 			new_confirmed_order := false
 
 			for btn := 0; btn < N_BTN_TYPES; btn++ {
 				for floor := 0; floor < N_FLOORS; floor++ {
 					if btn == elevio.BT_Cab {
-						if orders.Calls[remote_orders.Id][btn][floor] < remote_orders.Calls[remote_orders.Id][btn][floor] {
+						if orders.Calls[remote_orders.Id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
 							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
 							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
-								orders.Calls[remote_orders.Id][floor][btn] = OS_Confirmed
+								orders.Calls[remote_orders.Id][btn][floor] = OS_Confirmed
 								new_confirmed_order = true
 							}
 						}
 					} else {
-						if orders.Calls[id][btn][floor] < remote_orders.Calls[remote_orders.Id][btn][floor] {
+						if orders.Calls[id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
 							orders.Calls[id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
 							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
 							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
-								orders.Calls[id][floor][btn] = OS_Confirmed
+								orders.Calls[id][btn][floor] = OS_Confirmed
 								new_confirmed_order = true
 							}
 						}
@@ -136,6 +135,7 @@ func OrderRedundancyManager(
 			btn := served_order.Button
 			switch btn {
 			case elevio.BT_Cab:
+
 				orders.Calls[id][elevio.BT_Cab][floor] = OS_None
 			default:
 				if len(alive_elevators) > 1 {
@@ -144,6 +144,9 @@ func OrderRedundancyManager(
 					orders.Calls[id][btn][floor] = OS_Unknown
 				}
 			}
+			confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
+			or_oa_confirmedOrders <- confirmed_orders
+
 		case <-periodic_timer:
 			orders_msg := createOrdersMSG(id, orders)
 			or_net_localOrders <- orders_msg

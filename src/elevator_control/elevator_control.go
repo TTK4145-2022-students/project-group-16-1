@@ -36,10 +36,11 @@ func ElevatorControl(
 		select {
 		case a := <-oa_ec_assignedOrders:
 			fmt.Println("--------------")
-			fmt.Println("Jumping into [fsm_onRequestUpdate]")
+			fmt.Println("Jumping into [onRequestUpdate]")
 			elevator_print(elevator)
 
 			elevator.requests = a
+
 			switch elevator.behaviour {
 			case EB_DoorOpen, EB_Obstructed:
 				should_clear_btns := requests_shouldClearImmediately(elevator)
@@ -50,6 +51,7 @@ func ElevatorControl(
 
 			case EB_Idle:
 				a := requests_nextAction(elevator)
+
 				elevator.dirn = a.dirn
 				elevator.behaviour = a.behaviour
 				switch elevator.behaviour {

@@ -90,6 +90,7 @@ func requests_nextAction(e *Elevator) Action {
 			action.behaviour = EB_Moving
 			action.dirn = D_Up
 		} else {
+
 			action.behaviour = EB_Idle
 			action.dirn = D_Stop
 		}
@@ -124,19 +125,29 @@ func requests_shouldClearImmediately(e *Elevator) []Button {
 		//Not needed yet
 	case CV_InDirn:
 		if e.dirn == D_Up {
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
+			if e.requests[e.floor][B_HallUp] == true {
+				e.requests[e.floor][B_HallUp] = false
+				should_clear_btns = append(should_clear_btns, B_HallUp)
+			}
 		} else if e.dirn == D_Down {
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
+			if e.requests[e.floor][B_HallDown] == true {
+				e.requests[e.floor][B_HallDown] = false
+				should_clear_btns = append(should_clear_btns, B_HallDown)
+			}
 		} else {
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
+			if e.requests[e.floor][B_HallUp] == true {
+				e.requests[e.floor][B_HallUp] = false
+				should_clear_btns = append(should_clear_btns, B_HallUp)
+			}
+			if e.requests[e.floor][B_HallDown] == true {
+				e.requests[e.floor][B_HallDown] = false
+				should_clear_btns = append(should_clear_btns, B_HallDown)
+			}
 		}
-		e.requests[e.floor][B_Cab] = false
-		should_clear_btns = append(should_clear_btns, B_Cab)
+		if e.requests[e.floor][B_Cab] == true {
+			e.requests[e.floor][B_Cab] = false
+			should_clear_btns = append(should_clear_btns, B_Cab)
+		}
 	default:
 	}
 	return should_clear_btns
@@ -148,32 +159,53 @@ func requests_clearAtCurrentFloor(e *Elevator) []Button {
 	case CV_All:
 		//not relevant
 	case CV_InDirn:
-		e.requests[e.floor][B_Cab] = false
+		if e.requests[e.floor][B_Cab] == true {
+			e.requests[e.floor][B_Cab] = false
+			should_clear_btns = append(should_clear_btns, B_Cab)
+		}
 		switch e.dirn {
 		case D_Up:
 			if !requests_above(e) && (!e.requests[e.floor][B_HallUp]) {
-				e.requests[e.floor][B_HallDown] = false
-				should_clear_btns = append(should_clear_btns, B_HallDown)
+				if e.requests[e.floor][B_HallDown] == true {
+					e.requests[e.floor][B_HallDown] = false
+					should_clear_btns = append(should_clear_btns, B_HallDown)
+				}
 			}
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
-		case D_Down:
-			if !requests_below(e) && (!e.requests[e.floor][B_HallDown]) {
+			if e.requests[e.floor][B_HallUp] == true {
 				e.requests[e.floor][B_HallUp] = false
 				should_clear_btns = append(should_clear_btns, B_HallUp)
 			}
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
+
+		case D_Down:
+			if !requests_below(e) && (!e.requests[e.floor][B_HallDown]) {
+
+				if e.requests[e.floor][B_HallUp] == true {
+					e.requests[e.floor][B_HallUp] = false
+					should_clear_btns = append(should_clear_btns, B_HallUp)
+				}
+			}
+			if e.requests[e.floor][B_HallDown] == true {
+				e.requests[e.floor][B_HallDown] = false
+				should_clear_btns = append(should_clear_btns, B_HallDown)
+			}
 		case D_Stop:
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
+			if e.requests[e.floor][B_HallUp] == true {
+				e.requests[e.floor][B_HallUp] = false
+				should_clear_btns = append(should_clear_btns, B_HallUp)
+			}
+			if e.requests[e.floor][B_HallDown] == true {
+				e.requests[e.floor][B_HallDown] = false
+				should_clear_btns = append(should_clear_btns, B_HallDown)
+			}
 		default:
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
+			if e.requests[e.floor][B_HallUp] == true {
+				e.requests[e.floor][B_HallUp] = false
+				should_clear_btns = append(should_clear_btns, B_HallUp)
+			}
+			if e.requests[e.floor][B_HallDown] == true {
+				e.requests[e.floor][B_HallDown] = false
+				should_clear_btns = append(should_clear_btns, B_HallDown)
+			}
 		}
 
 	default:
