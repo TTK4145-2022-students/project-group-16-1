@@ -6,7 +6,7 @@ import (
 )
 
 const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
+const N_BTN_TYPES = 3
 const HARDWARE_ADDR = "localhost:15657"
 const INTERVAL = 45 * time.Millisecond
 
@@ -20,16 +20,14 @@ const (
 )
 
 type Orders struct {
-	Id                string
-	HallCalls         [N_FLOORS][2]OrderState
-	HallCallConsensus map[string]*[N_FLOORS][2]bool
-	CabCalls          map[string]*[N_FLOORS]OrderState
+	Calls map[string]*[N_BTN_TYPES][N_FLOORS]OrderState
 }
 
 type OrdersMSG struct {
-	Id        string
-	HallCalls [N_FLOORS][2]OrderState
-	CabCalls  map[string][N_FLOORS]OrderState
+	Id    string
+	Calls map[string][N_BTN_TYPES][N_FLOORS]OrderState
+	// HallCalls [N_FLOORS][2]OrderState
+	// CabCalls  map[string][N_FLOORS]OrderState
 }
 
 type ConfirmedOrders struct {
@@ -38,158 +36,139 @@ type ConfirmedOrders struct {
 }
 
 func OrderRedundancyManager(
-	orm_remoteOrders <-chan OrdersMSG,
-	drv_buttons <-chan elevio.ButtonEvent,
-	ec_localOrderServed <-chan elevio.ButtonEvent,
-	orm_newElevDetected <-chan string,
-	orm_elevsLost <-chan []string,
-	orm_disconnected <-chan bool,
-	orm_confirmedOrders chan<- ConfirmedOrders,
-	orm_localOrders chan<- OrdersMSG,
+	net_or_remoteOrders <-chan OrdersMSG,
+	drv_or_buttons <-chan elevio.ButtonEvent,
+	ec_or_localOrderServed <-chan elevio.ButtonEvent,
+	al_or_newElevDetected <-chan string,
+	al_or_elevsLost <-chan []string,
+	al_or_disconnected <-chan bool,
+	or_oa_confirmedOrders chan<- ConfirmedOrders,
+	or_net_localOrders chan<- OrdersMSG,
 	id string) {
 
 	var alive_elevators []string
 	var orders Orders
-	var connected bool
 
-	orders.CabCalls = make(map[string]*[N_FLOORS]OrderState)
-	orders.CabCalls[id] = &[N_FLOORS]OrderState{}
-	orders.HallCallConsensus = make(map[string]*[N_FLOORS][2]bool)
-	orders.Id = id
+	orders.Calls = make(map[string]*[N_BTN_TYPES][N_FLOORS]OrderState)
+	orders.Calls[id] = &[N_BTN_TYPES][N_FLOORS]OrderState{}
 
-	timeout := time.After(INTERVAL)
+	periodic_timer := time.After(INTERVAL)
 
 	for {
 		select {
-		case new_elev := <-orm_newElevDetected:
+		case new_elev := <-al_or_newElevDetected:
 			alive_elevators = append(alive_elevators, new_elev)
-			orders.HallCallConsensus[new_elev] = &[N_FLOORS][2]bool{}
-			connected = true
-		case lost_elevs := <-orm_elevsLost:
-			for i := range lost_elevs {
-				alive_elevators = remove(alive_elevators, lost_elevs[i])
-				// Set cabcall state to unknown if not confirmed
-				for floor := 0; floor < N_FLOORS; floor++ {
-					if orders.CabCalls[lost_elevs[i]][floor] != OS_Confirmed {
-						orders.CabCalls[lost_elevs[i]][floor] = OS_Unknown
+			orders.Calls[new_elev] = &[N_BTN_TYPES][N_FLOORS]OrderState{}
+		case lost_elev_ids := <-al_or_elevsLost:
+			for i := range lost_elev_ids {
+				alive_elevators = remove(alive_elevators, lost_elev_ids[i])
+				// Set cab call state to unknown if not confirmed
+				for btn := 0; btn < N_BTN_TYPES; btn++ {
+					for floor := 0; floor < N_FLOORS; floor++ {
+						if orders.Calls[lost_elev_ids[i]][btn][floor] != OS_Confirmed {
+							orders.Calls[lost_elev_ids[i]][btn][floor] = OS_Unknown
+						}
 					}
 				}
-				// Reset hallcall consensus matrix for given ID
-				for id := range orders.HallCallConsensus {
-					orders.HallCallConsensus[id] = &[N_FLOORS][2]bool{}
+			}
+		case <-al_or_disconnected:
+			for _, btn := range []elevio.ButtonType{elevio.BT_HallDown, elevio.BT_HallUp} {
+				for floor := 0; floor < N_FLOORS; floor++ {
+					if orders.Calls[id][btn][floor] == OS_None || orders.Calls[id][btn][floor] == OS_Unconfirmed {
+						orders.Calls[id][btn][floor] = OS_Unknown
+					}
 				}
 			}
-		case disconnected := <-orm_disconnected:
-			connected = !disconnected
-			for floor := 0; floor < N_FLOORS; floor++ {
-				orders.HallCalls[floor][0] = fsm_onDisconnect(orders.HallCalls[floor][0])
-				orders.HallCalls[floor][1] = fsm_onDisconnect(orders.HallCalls[floor][1])
-			}
-		case remoteOrders := <-orm_remoteOrders:
+
+		case remote_orders := <-net_or_remoteOrders:
 			// Check if elevator is alive
-			if !contains(alive_elevators, remoteOrders.Id) {
+			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
+
 			new_confirmed_order := false
 
-			// Loop through all HC orders
-			for floor := 0; floor < N_FLOORS; floor++ {
-				for btn := 0; btn < 2; btn++ {
-					orders.HallCalls[floor][btn] = fsm_remoteReceived(orders.HallCalls[floor][btn], remoteOrders.HallCalls[floor][btn])
-					if orders.HallCalls[floor][btn] == OS_Unconfirmed {
-						if fsm_barrierCheck(remoteOrders.Id, floor, btn, orders, alive_elevators) {
-							orders.HallCalls[floor][btn] = OS_Confirmed
-							new_confirmed_order = true
-						}
-					}
-				}
-			}
-			// Loop through all CC orders
-			for elev_id := range orders.CabCalls {
+			for btn := 0; btn < N_BTN_TYPES; btn++ {
 				for floor := 0; floor < N_FLOORS; floor++ {
-					orders.CabCalls[elev_id][floor] = fsm_remoteReceived(orders.CabCalls[elev_id][floor], remoteOrders.CabCalls[elev_id][floor])
-					if orders.CabCalls[elev_id][floor] == OS_Unconfirmed {
-						if fsm_barrierCheck(remoteOrders.Id, floor, 2, orders, alive_elevators) {
-							orders.CabCalls[elev_id][floor] = OS_Confirmed
-							new_confirmed_order = true
+					if btn == elevio.BT_Cab {
+						if orders.Calls[remote_orders.Id][btn][floor] < remote_orders.Calls[remote_orders.Id][btn][floor] {
+							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
+							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
+								orders.Calls[remote_orders.Id][floor][btn] = OS_Confirmed
+								new_confirmed_order = true
+							}
+						}
+					} else {
+						if orders.Calls[id][btn][floor] < remote_orders.Calls[remote_orders.Id][btn][floor] {
+							orders.Calls[id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
+							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
+							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
+								orders.Calls[id][floor][btn] = OS_Confirmed
+								new_confirmed_order = true
+							}
 						}
 					}
 				}
-
 			}
 
 			if new_confirmed_order {
-				confirmed_orders := fsm_getConfirmedOrders(orders, alive_elevators)
-				orm_confirmedOrders <- confirmed_orders
+				confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
+				or_oa_confirmedOrders <- confirmed_orders
 			}
-		case button_event := <-drv_buttons:
+		case button_event := <-drv_or_buttons:
 
 			floor := button_event.Floor
 			switch button_event.Button {
 			case elevio.BT_Cab:
-
-				if orders.CabCalls[orders.Id][floor] != OS_Confirmed {
-					orders.CabCalls[orders.Id][floor] = OS_Unconfirmed
+				if orders.Calls[id][elevio.BT_Cab][floor] != OS_Confirmed {
+					orders.Calls[id][elevio.BT_Cab][floor] = OS_Unconfirmed
 
 				}
-			case elevio.BT_HallUp:
-				if connected {
-					if orders.HallCalls[floor][0] != OS_Confirmed {
-						orders.HallCalls[floor][0] = OS_Unconfirmed
-					}
-				}
-			case elevio.BT_HallDown:
-				if connected {
-					if orders.HallCalls[floor][1] != OS_Confirmed {
-						orders.HallCalls[floor][1] = OS_Unconfirmed
+			default:
+				if len(alive_elevators) > 1 {
+					if orders.Calls[id][button_event.Button][floor] != OS_Confirmed {
+						orders.Calls[id][button_event.Button][floor] = OS_Unconfirmed
 					}
 				}
 			}
-		case served_order := <-ec_localOrderServed:
+		case served_order := <-ec_or_localOrderServed:
 			floor := served_order.Floor
 			btn := served_order.Button
 			switch btn {
 			case elevio.BT_Cab:
-				orders.CabCalls[id][floor] = OS_None
-			case elevio.BT_HallUp:
-				if connected {
-					orders.HallCalls[floor][0] = OS_None
+				orders.Calls[id][elevio.BT_Cab][floor] = OS_None
+			default:
+				if len(alive_elevators) > 1 {
+					orders.Calls[id][btn][floor] = OS_None
 				} else {
-					orders.HallCalls[floor][0] = OS_Unknown
-				}
-			case elevio.BT_HallDown:
-				if connected {
-					orders.HallCalls[floor][1] = OS_None
-				} else {
-					orders.HallCalls[floor][1] = OS_Unknown
+					orders.Calls[id][btn][floor] = OS_Unknown
 				}
 			}
-		case <-timeout:
-			orders_msg := createOrdersMSG(orders)
-			orm_localOrders <- orders_msg
-			timeout = time.After(INTERVAL)
+		case <-periodic_timer:
+			orders_msg := createOrdersMSG(id, orders)
+			or_net_localOrders <- orders_msg
+			periodic_timer = time.After(INTERVAL)
 		}
 	}
 }
 
-func createOrdersMSG(orders Orders) OrdersMSG {
+func createOrdersMSG(id string, orders Orders) OrdersMSG {
 	var orders_msg OrdersMSG
-	orders_msg.Id = orders.Id
-	orders_msg.HallCalls = orders.HallCalls
-	orders_msg.CabCalls = make(map[string][N_FLOORS]OrderState)
-	for id, val := range orders.CabCalls {
-		orders_msg.CabCalls[id] = *val
+	orders_msg.Id = id
+	orders_msg.Calls = make(map[string][N_BTN_TYPES][N_FLOORS]OrderState)
+	for id, val := range orders.Calls {
+		orders_msg.Calls[id] = *val
 	}
 	return orders_msg
 }
 
-func fsm_getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOrders {
+func getConfirmedOrders(id string, orders Orders, alive_elevators []string) ConfirmedOrders {
 	var confirmed_orders ConfirmedOrders
 	confirmed_orders.CabCalls = make(map[string]*[N_FLOORS]bool)
 
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < 2; btn++ {
-			if orders.HallCalls[floor][btn] == OS_Confirmed {
+			if orders.Calls[id][btn][floor] == OS_Confirmed {
 				confirmed_orders.HallCalls[floor][btn] = true
 			}
 		}
@@ -197,34 +176,18 @@ func fsm_getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOr
 	for _, elev_id := range alive_elevators {
 		confirmed_orders.CabCalls[elev_id] = &[N_FLOORS]bool{}
 		for floor := 0; floor < N_FLOORS; floor++ {
-			if orders.CabCalls[elev_id][floor] == OS_Confirmed {
+			if orders.Calls[elev_id][elevio.BT_Cab][floor] == OS_Confirmed {
 				confirmed_orders.CabCalls[elev_id][floor] = true
 			}
 		}
 	}
 	return confirmed_orders
 }
-func fsm_barrierCheck(id string, floor int, btn int, orders Orders, alive_elevators []string) bool {
 
-	if len(alive_elevators) == 1 {
-		if btn == 2 && id == orders.Id {
-			return true
-		} else {
+func barrierCheck(id string, floor int, btn int, orders Orders, alive_elevators []string) bool {
+	for _, elev_id := range alive_elevators {
+		if orders.Calls[elev_id][btn][floor] != OS_Unconfirmed {
 			return false
-		}
-	}
-	if btn == 2 {
-		for _, elev_id := range alive_elevators {
-			if orders.CabCalls[elev_id][floor] != OS_Confirmed {
-				return false
-			}
-		}
-	} else {
-		orders.HallCallConsensus[id][floor][btn] = true
-		for _, elev_id := range alive_elevators {
-			if !orders.HallCallConsensus[elev_id][floor][btn] {
-				return false
-			}
 		}
 	}
 	return true

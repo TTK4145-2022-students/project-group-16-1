@@ -15,7 +15,7 @@ func fsm_init() {
 
 func setAllLights(es *Elevator) {
 	for floor := 0; floor < N_FLOORS; floor++ {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			io_setButtonLamp(Button(btn), floor, elevator.requests[floor][btn])
 		}
 	}
@@ -27,7 +27,7 @@ func fsm_onInitBetweenFloors() {
 	elevator.behaviour = EB_Moving
 }
 
-func fsm_onRequestUpdate(a [N_FLOORS][N_BUTTONS]bool) {
+func fsm_onRequestUpdate(a [N_FLOORS][N_BTN_TYPES]bool) {
 	fmt.Println("--------------")
 	fmt.Println("Jumping into [fsm_onRequestUpdate]")
 	elevator_print(elevator)

@@ -10,17 +10,17 @@ var door_timer *time.Timer
 var id string
 
 const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
+const N_BTN_TYPES = 3
 const HARDWARE_ADDR = "localhost:15657"
 const INTERVAL = 50 * time.Millisecond
 
 func ElevatorControl(
-	oa_assignedOrders <-chan [N_FLOORS][N_BUTTONS]bool,
-	drv_floors <-chan int,
-	drv_obstr <-chan bool,
-	drv_stop <-chan bool,
+	oa_ec_assignedOrders <-chan [N_FLOORS][N_BTN_TYPES]bool,
+	drv_ec_floor <-chan int,
+	drv_ec_obstr <-chan bool,
+	drv_ec_stop <-chan bool,
 	net_elevatorState chan<- ElevatorState,
-	ec_localOrderServed chan<- elevio.ButtonEvent,
+	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	local_id string) {
 	println("Elevator control started!")
 	id = local_id
@@ -33,18 +33,18 @@ func ElevatorControl(
 
 	for {
 		select {
-		case a := <-oa_assignedOrders:
+		case a := <-oa_ec_assignedOrders:
 
 			fsm_onRequestUpdate(a)
 
-		case a := <-drv_floors:
+		case a := <-drv_ec_floor:
 
 			fsm_onFloorArrival(a)
 
-		case a := <-drv_obstr:
+		case a := <-drv_ec_obstr:
 			fsm_onObstruction(a)
 
-		case <-drv_stop:
+		case <-drv_ec_stop:
 
 		case <-door_timer.C:
 			fsm_onDoorTimeout()

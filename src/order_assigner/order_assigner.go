@@ -8,7 +8,7 @@ import (
 )
 
 const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
+const N_BTN_TYPES = 3
 
 type JsonIdState struct {
 	Behaviour   string          `json:"behaviour"`
@@ -23,11 +23,11 @@ type JsonProxy struct {
 }
 
 func OrderAssigner(
-	orm_confirmedOrders <-chan order_redundancy_manager.ConfirmedOrders,
+	or_oa_confirmedOrders <-chan order_redundancy_manager.ConfirmedOrders,
 	net_elevatorState <-chan elevator_control.ElevatorState,
-	oa_newElevDetected <-chan string,
-	oa_elevsLost <-chan []string,
-	oa_assignedOrders chan<- [N_FLOORS][N_BUTTONS]bool,
+	al_oa_newElevDetected <-chan string,
+	oa_al_elevsLost <-chan []string,
+	oa_ec_assignedOrders chan<- [N_FLOORS][N_BTN_TYPES]bool,
 	id string) {
 
 	var confirmed_orders order_redundancy_manager.ConfirmedOrders
@@ -37,27 +37,27 @@ func OrderAssigner(
 
 	for {
 		select {
-		case confirmed_orders = <-orm_confirmedOrders:
+		case confirmed_orders = <-or_oa_confirmedOrders:
 
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
-				oa_assignedOrders <- local_assigned_orders
+				oa_ec_assignedOrders <- local_assigned_orders
 			}
 
-		case new_elev := <-oa_newElevDetected:
+		case new_elev := <-al_oa_newElevDetected:
 			elevator_states[new_elev] = elevator_control.ElevatorState{}
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
-				oa_assignedOrders <- local_assigned_orders
+				oa_ec_assignedOrders <- local_assigned_orders
 			}
 
-		case lost_elev := <-oa_elevsLost:
+		case lost_elev := <-oa_al_elevsLost:
 			for i := range lost_elev {
 				delete(elevator_states, lost_elev[i])
 			}
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
-				oa_assignedOrders <- local_assigned_orders
+				oa_ec_assignedOrders <- local_assigned_orders
 			}
 
 		case state := <-net_elevatorState:
@@ -68,7 +68,7 @@ func OrderAssigner(
 					elevator_states[state.Id] = state
 					local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 					if !err {
-						oa_assignedOrders <- local_assigned_orders
+						oa_ec_assignedOrders <- local_assigned_orders
 					}
 				}
 			}
@@ -91,19 +91,19 @@ func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[st
 }
 
 func assign(orders order_redundancy_manager.ConfirmedOrders,
-	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BUTTONS]bool, bool) {
+	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 	json_msg := generateJson(orders, states)
 
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
 		// Return dummy array and err = true
-		return [N_FLOORS][N_BUTTONS]bool{}, true
+		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
-	var msg map[string][N_FLOORS][N_BUTTONS]bool
+	var msg map[string][N_FLOORS][N_BTN_TYPES]bool
 	err = json.Unmarshal(assigned_orders, &msg)
 	if err != nil {
 		// Return dummy array and err = true
-		return [N_FLOORS][N_BUTTONS]bool{}, true
+		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
 	return msg[id], false
 }

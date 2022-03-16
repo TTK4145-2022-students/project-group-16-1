@@ -9,7 +9,7 @@ type Action struct {
 
 func requests_above(e *Elevator) bool {
 	for f := e.floor + 1; f < N_FLOORS; f++ {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			if e.requests[f][btn] {
 				return true
 			}
@@ -20,7 +20,7 @@ func requests_above(e *Elevator) bool {
 
 func requests_below(e *Elevator) bool {
 	for f := 0; f < e.floor; f++ {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			if e.requests[f][btn] {
 				return true
 			}
@@ -30,7 +30,7 @@ func requests_below(e *Elevator) bool {
 }
 
 func requests_here(e *Elevator) bool {
-	for btn := 0; btn < N_BUTTONS; btn++ {
+	for btn := 0; btn < N_BTN_TYPES; btn++ {
 		if e.requests[e.floor][btn] {
 			return true
 		}

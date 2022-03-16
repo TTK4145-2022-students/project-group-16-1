@@ -6,24 +6,24 @@ import (
 
 func AliveListener(
 	peersUpdate <-chan peers.PeerUpdate,
-	orm_newElevDetected chan<- string,
-	orm_elevsLost chan<- []string,
-	orm_disconnected chan<- bool,
-	oa_newElevDetected chan<- string,
-	oa_elevsLost chan<- []string,
+	al_or_newElevDetected chan<- string,
+	al_or_elevsLost chan<- []string,
+	al_or_disconnected chan<- bool,
+	oa_al_newElevDetected chan<- string,
+	oa_al_elevsLost chan<- []string,
 ) {
 	for {
 		elevUpdate := <-peersUpdate
 		if len(elevUpdate.New) != 0 {
-			orm_newElevDetected <- elevUpdate.New
-			oa_newElevDetected <- elevUpdate.New
+			al_or_newElevDetected <- elevUpdate.New
+			oa_al_newElevDetected <- elevUpdate.New
 		}
 		if len(elevUpdate.Lost) != 0 {
-			orm_elevsLost <- elevUpdate.Lost
-			oa_elevsLost <- elevUpdate.Lost
+			al_or_elevsLost <- elevUpdate.Lost
+			oa_al_elevsLost <- elevUpdate.Lost
 		}
 		if len(elevUpdate.Peers) == 0 {
-			orm_disconnected <- true
+			al_or_disconnected <- true
 		}
 	}
 }

@@ -12,7 +12,7 @@ import (
 )
 
 const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
+const N_BTN_TYPES = 3
 const HARDWARE_ADDR = "localhost:15657"
 
 func main() {
@@ -25,51 +25,51 @@ func main() {
 	flag.Parse()
 	//cnahhhels
 	// Hardware
-	drv_buttons := make(chan elevio.ButtonEvent)
-	drv_floors := make(chan int)
-	drv_obstr := make(chan bool)
-	drv_stop := make(chan bool)
+	drv_or_buttons := make(chan elevio.ButtonEvent)
+	drv_ec_floor := make(chan int)
+	drv_ec_obstr := make(chan bool)
+	drv_ec_stop := make(chan bool)
 
 	//Elevator control
-	ec_localOrderServed := make(chan elevio.ButtonEvent)
+	ec_or_localOrderServed := make(chan elevio.ButtonEvent)
 
 	//Assigned order
-	oa_assignedOrders := make(chan [N_FLOORS][N_BUTTONS]bool)
-	oa_newElevDetected := make(chan string)
-	oa_elevsLost := make(chan []string)
+	oa_ec_assignedOrders := make(chan [N_FLOORS][N_BTN_TYPES]bool)
+	al_oa_newElevDetected := make(chan string)
+	oa_al_elevsLost := make(chan []string)
 	// Order redundancy
-	orm_confirmedOrders := make(chan order_redundancy_manager.ConfirmedOrders)
-	orm_remoteOrders := make(chan order_redundancy_manager.OrdersMSG)
-	orm_localOrders := make(chan order_redundancy_manager.OrdersMSG)
+	or_oa_confirmedOrders := make(chan order_redundancy_manager.ConfirmedOrders)
+	net_or_remoteOrders := make(chan order_redundancy_manager.OrdersMSG)
+	or_net_localOrders := make(chan order_redundancy_manager.OrdersMSG)
 
 	// //Network
 	net_peersUpdate := make(chan peers.PeerUpdate)
-	net_elevatorStateTX := make(chan elevator_control.ElevatorState)
-	net_elevatorStateRX := make(chan elevator_control.ElevatorState)
+	ec_net_elevatorStateTX := make(chan elevator_control.ElevatorState)
+	net_oa_elevatorStateRX := make(chan elevator_control.ElevatorState)
 
-	orm_newElevDetected := make(chan string)
-	orm_elevsLost := make(chan []string)
-	orm_disconnected := make(chan bool)
+	al_or_newElevDetected := make(chan string)
+	al_or_elevsLost := make(chan []string)
+	al_or_disconnected := make(chan bool)
 
 	elevio.Init(elevator_control.HARDWARE_ADDR, elevator_control.N_FLOORS)
-	go alive_listener.AliveListener(net_peersUpdate, orm_newElevDetected, orm_elevsLost, orm_disconnected, oa_newElevDetected, oa_elevsLost)
-	go elevio.PollButtons(drv_buttons)
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-	go order_assigner.OrderAssigner(orm_confirmedOrders, net_elevatorStateRX, oa_newElevDetected, oa_elevsLost, oa_assignedOrders, id)
-	go elevator_control.ElevatorControl(oa_assignedOrders, drv_floors, drv_obstr, drv_stop, net_elevatorStateTX, ec_localOrderServed, id)
+	go alive_listener.AliveListener(net_peersUpdate, al_or_newElevDetected, al_or_elevsLost, al_or_disconnected, al_oa_newElevDetected, oa_al_elevsLost)
+	go elevio.PollButtons(drv_or_buttons)
+	go elevio.PollFloorSensor(drv_ec_floor)
+	go elevio.PollObstructionSwitch(drv_ec_obstr)
+	go elevio.PollStopButton(drv_ec_stop)
+	go order_assigner.OrderAssigner(or_oa_confirmedOrders, net_oa_elevatorStateRX, al_oa_newElevDetected, oa_al_elevsLost, oa_ec_assignedOrders, id)
+	go elevator_control.ElevatorControl(oa_ec_assignedOrders, drv_ec_floor, drv_ec_obstr, drv_ec_stop, ec_net_elevatorStateTX, ec_or_localOrderServed, id)
 
-	go network.Network(id, net_peersUpdate, net_elevatorStateTX, net_elevatorStateRX, orm_localOrders, orm_remoteOrders)
+	go network.Network(id, net_peersUpdate, ec_net_elevatorStateTX, net_oa_elevatorStateRX, or_net_localOrders, net_or_remoteOrders)
 
-	go order_redundancy_manager.OrderRedundancyManager(orm_remoteOrders,
-		drv_buttons,
-		ec_localOrderServed,
-		orm_newElevDetected,
-		orm_elevsLost,
-		orm_disconnected,
-		orm_confirmedOrders,
-		orm_localOrders,
+	go order_redundancy_manager.OrderRedundancyManager(net_or_remoteOrders,
+		drv_or_buttons,
+		ec_or_localOrderServed,
+		al_or_newElevDetected,
+		al_or_elevsLost,
+		al_or_disconnected,
+		or_oa_confirmedOrders,
+		or_net_localOrders,
 		id)
 
 	for {
