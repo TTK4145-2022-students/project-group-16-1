@@ -2,13 +2,14 @@ package order_redundancy_manager
 
 import (
 	"Elevator-project/src/elevio"
+	"fmt"
 	"time"
 )
 
 const N_FLOORS = 4 //REMOVE THIS
 const N_BTN_TYPES = 3
 const HARDWARE_ADDR = "localhost:15657"
-const INTERVAL = 45 * time.Millisecond
+const INTERVAL = 200 * time.Millisecond
 
 type OrderState int
 
@@ -86,6 +87,7 @@ func OrderRedundancyManager(
 				break
 			}
 			new_confirmed_order := false
+			fmt.Println(remote_orders)
 
 			for btn := 0; btn < N_BTN_TYPES; btn++ {
 				for floor := 0; floor < N_FLOORS; floor++ {
@@ -104,6 +106,7 @@ func OrderRedundancyManager(
 							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
 								orders.Calls[id][btn][floor] = OS_Confirmed
 								new_confirmed_order = true
+
 							}
 						}
 					}
@@ -114,6 +117,7 @@ func OrderRedundancyManager(
 				confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
 				or_oa_confirmedOrders <- confirmed_orders
 			}
+			setAllLights(id, orders)
 		case button_event := <-drv_or_buttons:
 
 			floor := button_event.Floor
@@ -127,6 +131,7 @@ func OrderRedundancyManager(
 				if len(alive_elevators) > 1 {
 					if orders.Calls[id][button_event.Button][floor] != OS_Confirmed {
 						orders.Calls[id][button_event.Button][floor] = OS_Unconfirmed
+
 					}
 				}
 			}
@@ -194,6 +199,17 @@ func barrierCheck(id string, floor int, btn int, orders Orders, alive_elevators 
 		}
 	}
 	return true
+}
+func setAllLights(id string, orders Orders) {
+	for floor := 0; floor < N_FLOORS; floor++ {
+		for btn := 0; btn < N_BTN_TYPES; btn++ {
+			is_order := false
+			if orders.Calls[id][btn][floor] == OS_Confirmed {
+				is_order = true
+			}
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, is_order)
+		}
+	}
 }
 
 func contains(s []string, e string) bool {

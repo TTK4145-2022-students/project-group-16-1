@@ -70,7 +70,6 @@ func ElevatorControl(
 				}
 
 			}
-			setAllLights(elevator)
 
 			fmt.Println("New state:")
 			elevator_print(elevator)
@@ -97,7 +96,6 @@ func ElevatorControl(
 
 					}
 					door_timer.Reset(elevator.config.doorOpenDuration_s)
-					setAllLights(elevator)
 					elevator.behaviour = EB_DoorOpen
 				}
 			default:

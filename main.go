@@ -36,7 +36,7 @@ func main() {
 	//Assigned order
 	oa_ec_assignedOrders := make(chan [N_FLOORS][N_BTN_TYPES]bool)
 	al_oa_newElevDetected := make(chan string)
-	oa_al_elevsLost := make(chan []string)
+	al_oa_elevsLost := make(chan []string)
 	// Order redundancy
 	or_oa_confirmedOrders := make(chan order_redundancy_manager.ConfirmedOrders)
 	net_or_remoteOrders := make(chan order_redundancy_manager.OrdersMSG)
@@ -52,12 +52,12 @@ func main() {
 	al_or_disconnected := make(chan bool)
 
 	elevio.Init(elevator_control.HARDWARE_ADDR, elevator_control.N_FLOORS)
-	go alive_listener.AliveListener(net_peersUpdate, al_or_newElevDetected, al_or_elevsLost, al_or_disconnected, al_oa_newElevDetected, oa_al_elevsLost)
+	go alive_listener.AliveListener(net_peersUpdate, al_or_newElevDetected, al_or_elevsLost, al_or_disconnected, al_oa_newElevDetected, al_oa_elevsLost)
 	go elevio.PollButtons(drv_or_buttons)
 	go elevio.PollFloorSensor(drv_ec_floor)
 	go elevio.PollObstructionSwitch(drv_ec_obstr)
 	go elevio.PollStopButton(drv_ec_stop)
-	go order_assigner.OrderAssigner(or_oa_confirmedOrders, net_oa_elevatorStateRX, al_oa_newElevDetected, oa_al_elevsLost, oa_ec_assignedOrders, id)
+	go order_assigner.OrderAssigner(or_oa_confirmedOrders, net_oa_elevatorStateRX, al_oa_newElevDetected, al_oa_elevsLost, oa_ec_assignedOrders, id)
 	go elevator_control.ElevatorControl(oa_ec_assignedOrders, drv_ec_floor, drv_ec_obstr, drv_ec_stop, ec_net_elevatorStateTX, ec_or_localOrderServed, id)
 
 	go network.Network(id, net_peersUpdate, ec_net_elevatorStateTX, net_oa_elevatorStateRX, or_net_localOrders, net_or_remoteOrders)

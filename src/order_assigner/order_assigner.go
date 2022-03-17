@@ -26,14 +26,14 @@ func OrderAssigner(
 	or_oa_confirmedOrders <-chan order_redundancy_manager.ConfirmedOrders,
 	net_elevatorState <-chan elevator_control.ElevatorState,
 	al_oa_newElevDetected <-chan string,
-	oa_al_elevsLost <-chan []string,
+	al_oa_elevsLost <-chan []string,
 	oa_ec_assignedOrders chan<- [N_FLOORS][N_BTN_TYPES]bool,
 	id string) {
 
 	var confirmed_orders order_redundancy_manager.ConfirmedOrders
 	elevator_states := make(map[string]elevator_control.ElevatorState)
 
-	elevator_states[id] = elevator_control.ElevatorState{}
+	// elevator_states[id] = elevator_control.ElevatorState{}
 
 	for {
 		select {
@@ -46,12 +46,8 @@ func OrderAssigner(
 
 		case new_elev := <-al_oa_newElevDetected:
 			elevator_states[new_elev] = elevator_control.ElevatorState{}
-			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
-			if !err {
-				oa_ec_assignedOrders <- local_assigned_orders
-			}
 
-		case lost_elev := <-oa_al_elevsLost:
+		case lost_elev := <-al_oa_elevsLost:
 			for i := range lost_elev {
 				delete(elevator_states, lost_elev[i])
 			}

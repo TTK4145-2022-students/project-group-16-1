@@ -5,7 +5,6 @@ import (
 	"Elevator-project/src/network/bcast"
 	"Elevator-project/src/network/peers"
 	"Elevator-project/src/order_redundancy_manager"
-	"fmt"
 )
 
 func Network(id string,
@@ -22,17 +21,7 @@ func Network(id string,
 	go bcast.Transmitter(27772, stateTX)
 	go bcast.Receiver(27772, stateRX)
 
-	go bcast.Transmitter(27772, orderTX)
-	go bcast.Receiver(27772, orderRX)
+	go bcast.Transmitter(27771, orderTX)
+	go bcast.Receiver(27771, orderRX)
 
-	fmt.Println("Network module started")
-	for {
-		select {
-		case p := <-peerUpdateCh:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Lost:     %q\n", p.Lost)
-		}
-	}
 }
