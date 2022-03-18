@@ -21,6 +21,7 @@ func ElevatorControl(
 	drv_ec_obstr <-chan bool,
 	drv_ec_stop <-chan bool,
 	net_elevatorState chan<- ElevatorState,
+	ec_oa_localElevatorState chan<- ElevatorState,
 	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	local_id string) {
 	println("Elevator control started!")
@@ -111,7 +112,7 @@ func ElevatorControl(
 			elevator_print(elevator)
 			switch elevator.behaviour {
 			case EB_DoorOpen:
-				if obstructed{
+				if obstructed {
 					elevator.behaviour = EB_Obstructed
 				}
 			case EB_Obstructed:
@@ -131,6 +132,7 @@ func ElevatorControl(
 		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG()
 			net_elevatorState <- elevator_state
+			ec_oa_localElevatorState <- elevator_state
 			send_state_timeout = time.After(INTERVAL)
 		}
 	}

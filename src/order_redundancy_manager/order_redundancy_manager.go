@@ -2,6 +2,7 @@ package order_redundancy_manager
 
 import (
 	"Elevator-project/src/elevio"
+	"fmt"
 	"time"
 )
 
@@ -57,6 +58,9 @@ func OrderRedundancyManager(
 	orders.CabCalls[id] = &[N_FLOORS]OrderState{}
 
 	orders.CabCallConsensus = make(map[string]*[N_FLOORS][]string)
+	orders.CabCallConsensus[id] = &[N_FLOORS][]string{}
+
+	io_setAllLights(id, orders)
 
 	periodicTimeout := time.After(INTERVAL)
 
@@ -64,8 +68,10 @@ func OrderRedundancyManager(
 		select {
 		case new_elev := <-orm_newElevDetected:
 			alive_elevators = append(alive_elevators, new_elev)
-			orders.CabCalls[new_elev] = &[N_FLOORS]OrderState{}
-			orders.CabCallConsensus[new_elev] = &[N_FLOORS][]string{}
+			if _, ok := orders.CabCalls[new_elev]; !ok {
+				orders.CabCalls[new_elev] = &[N_FLOORS]OrderState{}
+				orders.CabCallConsensus[new_elev] = &[N_FLOORS][]string{}
+			}
 		case lost_elevs := <-orm_elevsLost:
 			for i := range lost_elevs {
 				alive_elevators = remove(alive_elevators, lost_elevs[i])
@@ -78,11 +84,11 @@ func OrderRedundancyManager(
 			}
 		case <-orm_disconnected:
 			for floor := 0; floor < N_FLOORS; floor++ {
-				for btn := 0; btn < 2; floor++ {
+				for btn := 0; btn < 2; btn++ {
 					switch orders.HallCalls[floor][btn] {
 					case OS_Unconfirmed, OS_None:
 						orders.HallCalls[floor][btn] = OS_Unknown
-					case OS_Confirmed: //ugly af pls remove
+					case OS_Confirmed:
 					case OS_Unknown:
 					}
 				}
@@ -93,7 +99,7 @@ func OrderRedundancyManager(
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
-
+			fmt.Println(remote_orders.CabCalls)
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for btn := 0; btn < 2; btn++ {
 					if orders.HallCalls[floor][btn] <= remote_orders.HallCalls[floor][btn] {
@@ -136,20 +142,17 @@ func OrderRedundancyManager(
 
 			}
 
-			confirmed_orders := getConfirmedOrders(orders, alive_elevators)
-			orm_confirmedOrders <- confirmed_orders
-
-			io_setAllLights(id, orders)
-
 		case button_event := <-drv_buttons:
-
 			floor := button_event.Floor
 			btn := button_event.Button
 			switch btn {
 			case elevio.BT_Cab:
-
 				if orders.CabCalls[id][floor] != OS_Confirmed {
-					orders.CabCalls[id][floor] = OS_Unconfirmed
+					if len(alive_elevators) == 0 {
+						orders.CabCalls[id][floor] = OS_Confirmed
+					} else {
+						orders.CabCalls[id][floor] = OS_Unconfirmed
+					}
 
 				}
 			case elevio.BT_HallUp, elevio.BT_HallDown:
@@ -160,6 +163,7 @@ func OrderRedundancyManager(
 				}
 
 			}
+
 		case served_order := <-ec_localOrderServed:
 			floor := served_order.Floor
 			btn := served_order.Button
@@ -175,11 +179,13 @@ func OrderRedundancyManager(
 					orders.HallCalls[floor][btn] = OS_Unknown
 				}
 			}
-			io_setAllLights(id, orders)
 
 		case <-periodicTimeout:
 			orders_msg := createOrdersMSG(id, orders)
 			orm_localOrders <- orders_msg
+			confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
+			orm_confirmedOrders <- confirmed_orders
+			io_setAllLights(id, orders)
 			periodicTimeout = time.After(INTERVAL)
 		}
 	}
@@ -220,7 +226,7 @@ func createOrdersMSG(id string, orders Orders) OrdersMSG {
 	return orders_msg
 }
 
-func getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOrders {
+func getConfirmedOrders(id string, orders Orders, alive_elevators []string) ConfirmedOrders {
 	var confirmed_orders ConfirmedOrders
 	confirmed_orders.CabCalls = make(map[string]*[N_FLOORS]bool)
 
@@ -237,6 +243,14 @@ func getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOrders
 			if orders.CabCalls[elev_id][floor] == OS_Confirmed {
 				confirmed_orders.CabCalls[elev_id][floor] = true
 			}
+		}
+	}
+	confirmed_orders.CabCalls[id] = &[N_FLOORS]bool{}
+	for floor := 0; floor < N_FLOORS; floor++ {
+
+		if orders.CabCalls[id][floor] == OS_Confirmed {
+
+			confirmed_orders.CabCalls[id][floor] = true
 		}
 	}
 	return confirmed_orders
