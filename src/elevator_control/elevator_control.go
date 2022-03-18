@@ -105,8 +105,24 @@ func ElevatorControl(
 			elevator_print(elevator)
 			fmt.Println("--------------")
 
-		case a := <-drv_ec_obstr:
-			fsm_onObstruction(a)
+		case obstructed := <-drv_ec_obstr:
+			fmt.Println("--------------")
+			fmt.Println("Jumping into [fsm_onObstruction")
+			elevator_print(elevator)
+			switch elevator.behaviour {
+			case EB_DoorOpen:
+				if obstructed{
+					elevator.behaviour = EB_Obstructed
+				}
+			case EB_Obstructed:
+				if !obstructed {
+					elevator.behaviour = EB_DoorOpen
+				}
+			default:
+			}
+			fmt.Println("New state:")
+			elevator_print(elevator)
+			fmt.Println("--------------")
 
 		case <-drv_ec_stop:
 

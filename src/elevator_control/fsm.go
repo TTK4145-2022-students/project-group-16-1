@@ -114,24 +114,3 @@ func fsm_onDoorTimeout() {
 	elevator_print(elevator)
 	fmt.Println("--------------")
 }
-
-func fsm_onObstruction(obstructed bool) {
-	fmt.Println("--------------")
-	fmt.Println("Jumping into [fsm_onObstruction")
-	elevator_print(elevator)
-	switch elevator.behaviour {
-	case EB_DoorOpen:
-		if obstructed {
-			elevator.behaviour = EB_Obstructed
-		}
-	case EB_Obstructed:
-		if !obstructed {
-			elevator.behaviour = EB_DoorOpen
-		}
-	default:
-	}
-	fmt.Println("New state:")
-	elevator_print(elevator)
-	fmt.Println("--------------")
-
-}

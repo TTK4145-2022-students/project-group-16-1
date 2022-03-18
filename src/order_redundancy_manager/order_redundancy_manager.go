@@ -2,14 +2,13 @@ package order_redundancy_manager
 
 import (
 	"Elevator-project/src/elevio"
-	"fmt"
 	"time"
 )
 
 const N_FLOORS = 4 //REMOVE THIS
-const N_BTN_TYPES = 3
+const N_BUTTONS = 3
 const HARDWARE_ADDR = "localhost:15657"
-const INTERVAL = 200 * time.Millisecond
+const INTERVAL = 45 * time.Millisecond
 
 type OrderState int
 
@@ -21,14 +20,18 @@ const (
 )
 
 type Orders struct {
-	Calls map[string]*[N_BTN_TYPES][N_FLOORS]OrderState
+	HallCalls         [N_FLOORS][2]OrderState
+	HallCallConsensus [N_FLOORS][2][]string
+	CabCalls          map[string]*[N_FLOORS]OrderState
+	CabCallConsensus  map[string]*[N_FLOORS][]string
 }
 
 type OrdersMSG struct {
-	Id    string
-	Calls map[string][N_BTN_TYPES][N_FLOORS]OrderState
-	// HallCalls [N_FLOORS][2]OrderState
-	// CabCalls  map[string][N_FLOORS]OrderState
+	Id                string
+	HallCalls         [N_FLOORS][2]OrderState
+	HallCallConsensus [N_FLOORS][2][]string
+	CabCalls          map[string][N_FLOORS]OrderState
+	CabCallConsensus  map[string][N_FLOORS][]string
 }
 
 type ConfirmedOrders struct {
@@ -37,124 +40,166 @@ type ConfirmedOrders struct {
 }
 
 func OrderRedundancyManager(
-	net_or_remoteOrders <-chan OrdersMSG,
-	drv_or_buttons <-chan elevio.ButtonEvent,
-	ec_or_localOrderServed <-chan elevio.ButtonEvent,
-	al_or_newElevDetected <-chan string,
-	al_or_elevsLost <-chan []string,
-	al_or_disconnected <-chan bool,
-	or_oa_confirmedOrders chan<- ConfirmedOrders,
-	or_net_localOrders chan<- OrdersMSG,
+	orm_remoteOrders <-chan OrdersMSG,
+	drv_buttons <-chan elevio.ButtonEvent,
+	ec_localOrderServed <-chan elevio.ButtonEvent,
+	orm_newElevDetected <-chan string,
+	orm_elevsLost <-chan []string,
+	orm_disconnected <-chan bool,
+	orm_confirmedOrders chan<- ConfirmedOrders,
+	orm_localOrders chan<- OrdersMSG,
 	id string) {
 
-	alive_elevators := []string{id}
+	var alive_elevators []string
 	var orders Orders
 
-	orders.Calls = make(map[string]*[N_BTN_TYPES][N_FLOORS]OrderState)
-	orders.Calls[id] = &[N_BTN_TYPES][N_FLOORS]OrderState{}
+	orders.CabCalls = make(map[string]*[N_FLOORS]OrderState)
+	orders.CabCalls[id] = &[N_FLOORS]OrderState{}
 
-	periodic_timer := time.After(INTERVAL)
+	orders.CabCallConsensus = make(map[string]*[N_FLOORS][]string)
+
+	periodicTimeout := time.After(INTERVAL)
 
 	for {
 		select {
-		case new_elev := <-al_or_newElevDetected:
+		case new_elev := <-orm_newElevDetected:
 			alive_elevators = append(alive_elevators, new_elev)
-			orders.Calls[new_elev] = &[N_BTN_TYPES][N_FLOORS]OrderState{}
-		case lost_elev_ids := <-al_or_elevsLost:
-			for i := range lost_elev_ids {
-				alive_elevators = remove(alive_elevators, lost_elev_ids[i])
-				// Set cab call state to unknown if not confirmed
-				for btn := 0; btn < N_BTN_TYPES; btn++ {
-					for floor := 0; floor < N_FLOORS; floor++ {
-						if orders.Calls[lost_elev_ids[i]][btn][floor] != OS_Confirmed {
-							orders.Calls[lost_elev_ids[i]][btn][floor] = OS_Unknown
-						}
-					}
-				}
-			}
-		case <-al_or_disconnected:
-			for _, btn := range []elevio.ButtonType{elevio.BT_HallDown, elevio.BT_HallUp} {
+			orders.CabCalls[new_elev] = &[N_FLOORS]OrderState{}
+			orders.CabCallConsensus[new_elev] = &[N_FLOORS][]string{}
+		case lost_elevs := <-orm_elevsLost:
+			for i := range lost_elevs {
+				alive_elevators = remove(alive_elevators, lost_elevs[i])
+				// Set cabcall state to unknown if not confirmed
 				for floor := 0; floor < N_FLOORS; floor++ {
-					if orders.Calls[id][btn][floor] == OS_None || orders.Calls[id][btn][floor] == OS_Unconfirmed {
-						orders.Calls[id][btn][floor] = OS_Unknown
+					if orders.CabCalls[lost_elevs[i]][floor] != OS_Confirmed {
+						orders.CabCalls[lost_elevs[i]][floor] = OS_Unknown
 					}
 				}
 			}
+		case <-orm_disconnected:
+			for floor := 0; floor < N_FLOORS; floor++ {
+				for btn := 0; btn < 2; floor++ {
+					switch orders.HallCalls[floor][btn] {
+					case OS_Unconfirmed, OS_None:
+						orders.HallCalls[floor][btn] = OS_Unknown
+					case OS_Confirmed: //ugly af pls remove
+					case OS_Unknown:
+					}
+				}
 
-		case remote_orders := <-net_or_remoteOrders:
+			}
+		case remote_orders := <-orm_remoteOrders:
 			// Check if elevator is alive
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
-			new_confirmed_order := false
-			fmt.Println(remote_orders)
 
-			for btn := 0; btn < N_BTN_TYPES; btn++ {
-				for floor := 0; floor < N_FLOORS; floor++ {
-					if btn == elevio.BT_Cab {
-						if orders.Calls[remote_orders.Id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
-							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
-							if barrierCheck(floor, btn, remote_orders, orders, alive_elevators) {
-								orders.Calls[remote_orders.Id][btn][floor] = OS_Confirmed
-								new_confirmed_order = true
+			for floor := 0; floor < N_FLOORS; floor++ {
+				for btn := 0; btn < 2; btn++ {
+					if orders.HallCalls[floor][btn] <= remote_orders.HallCalls[floor][btn] {
+						orders.HallCalls[floor][btn] = remote_orders.HallCalls[floor][btn]
+						if remote_orders.HallCalls[floor][btn] == OS_Unconfirmed {
+							if !contains(orders.HallCallConsensus[floor][btn], remote_orders.Id) {
+								orders.HallCallConsensus[floor][btn] = append(orders.HallCallConsensus[floor][btn], remote_orders.Id)
 							}
 						}
-					} else {
-						if orders.Calls[id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
-							orders.Calls[id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
-							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
-							if barrierCheck(floor, btn, remote_orders, orders, alive_elevators) {
-								orders.Calls[id][btn][floor] = OS_Confirmed
-								new_confirmed_order = true
-							}
+					}
+					//Consensus check
+					if orders.HallCalls[floor][btn] == OS_Unconfirmed && len(alive_elevators) > 1 {
+						if consensusCheck(orders.HallCallConsensus[floor][btn], remote_orders.HallCallConsensus[floor][btn], alive_elevators) {
+							orders.HallCalls[floor][btn] = OS_Confirmed
+							orders.HallCallConsensus[floor][btn] = []string{}
 						}
 					}
 				}
 			}
 
-			if new_confirmed_order {
-				confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
-				or_oa_confirmedOrders <- confirmed_orders
+			for elev_id := range orders.CabCalls {
+				for floor := 0; floor < N_FLOORS; floor++ {
+					if orders.CabCalls[elev_id][floor] <= remote_orders.CabCalls[elev_id][floor] {
+						orders.CabCalls[elev_id][floor] = remote_orders.CabCalls[elev_id][floor]
+						if remote_orders.CabCalls[elev_id][floor] == OS_Unconfirmed {
+							if !contains(orders.CabCallConsensus[elev_id][floor], remote_orders.Id) {
+								orders.CabCallConsensus[elev_id][floor] = append(orders.CabCallConsensus[elev_id][floor], remote_orders.Id)
+							}
+						}
+					}
+					//Consensus check
+					if orders.CabCalls[elev_id][floor] == OS_Unconfirmed {
+						if consensusCheck(orders.CabCallConsensus[elev_id][floor], remote_orders.CabCallConsensus[elev_id][floor], alive_elevators) {
+							orders.CabCalls[elev_id][floor] = OS_Confirmed
+							orders.CabCallConsensus[elev_id][floor] = []string{}
+						}
+					}
+
+				}
+
 			}
-			setAllLights(id, orders)
-		case button_event := <-drv_or_buttons:
+
+			confirmed_orders := getConfirmedOrders(orders, alive_elevators)
+			orm_confirmedOrders <- confirmed_orders
+
+			io_setAllLights(id, orders)
+
+		case button_event := <-drv_buttons:
 
 			floor := button_event.Floor
-			switch button_event.Button {
+			btn := button_event.Button
+			switch btn {
 			case elevio.BT_Cab:
-				if orders.Calls[id][elevio.BT_Cab][floor] != OS_Confirmed {
-					orders.Calls[id][elevio.BT_Cab][floor] = OS_Unconfirmed
+
+				if orders.CabCalls[id][floor] != OS_Confirmed {
+					orders.CabCalls[id][floor] = OS_Unconfirmed
 
 				}
-			default:
+			case elevio.BT_HallUp, elevio.BT_HallDown:
 				if len(alive_elevators) > 1 {
-					if orders.Calls[id][button_event.Button][floor] != OS_Confirmed {
-						orders.Calls[id][button_event.Button][floor] = OS_Unconfirmed
-
+					if orders.HallCalls[floor][btn] != OS_Confirmed {
+						orders.HallCalls[floor][btn] = OS_Unconfirmed
 					}
 				}
+
 			}
-		case served_order := <-ec_or_localOrderServed:
+		case served_order := <-ec_localOrderServed:
 			floor := served_order.Floor
 			btn := served_order.Button
 			switch btn {
 			case elevio.BT_Cab:
-
-				orders.Calls[id][elevio.BT_Cab][floor] = OS_None
-			default:
+				if orders.CabCalls[id][floor] == OS_Confirmed {
+					orders.CabCalls[id][floor] = OS_None
+				}
+			case elevio.BT_HallUp, elevio.BT_HallDown:
 				if len(alive_elevators) > 1 {
-					orders.Calls[id][btn][floor] = OS_None
+					orders.HallCalls[floor][btn] = OS_None
 				} else {
-					orders.Calls[id][btn][floor] = OS_Unknown
+					orders.HallCalls[floor][btn] = OS_Unknown
 				}
 			}
-			confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
-			or_oa_confirmedOrders <- confirmed_orders
+			io_setAllLights(id, orders)
 
-		case <-periodic_timer:
+		case <-periodicTimeout:
 			orders_msg := createOrdersMSG(id, orders)
-			or_net_localOrders <- orders_msg
-			periodic_timer = time.After(INTERVAL)
+			orm_localOrders <- orders_msg
+			periodicTimeout = time.After(INTERVAL)
+		}
+	}
+}
+
+func io_setAllLights(id string, orders Orders) {
+	for floor := 0; floor < N_FLOORS; floor++ {
+		for btn := 0; btn < N_BUTTONS; btn++ {
+			is_order := false
+			switch elevio.ButtonType(btn) {
+			case elevio.BT_Cab:
+				if orders.CabCalls[id][floor] == OS_Confirmed {
+					is_order = true
+				}
+			case elevio.BT_HallDown, elevio.BT_HallUp:
+				if orders.HallCalls[floor][btn] == OS_Confirmed {
+					is_order = true
+				}
+			}
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, is_order)
 		}
 	}
 }
@@ -162,20 +207,26 @@ func OrderRedundancyManager(
 func createOrdersMSG(id string, orders Orders) OrdersMSG {
 	var orders_msg OrdersMSG
 	orders_msg.Id = id
-	orders_msg.Calls = make(map[string][N_BTN_TYPES][N_FLOORS]OrderState)
-	for id, val := range orders.Calls {
-		orders_msg.Calls[id] = *val
+	orders_msg.CabCalls = make(map[string][N_FLOORS]OrderState)
+	orders_msg.HallCalls = orders.HallCalls
+	orders_msg.HallCallConsensus = orders.HallCallConsensus
+	orders_msg.CabCallConsensus = make(map[string][N_FLOORS][]string)
+	for id, val := range orders.CabCalls {
+		orders_msg.CabCalls[id] = *val
+	}
+	for id, val := range orders.CabCallConsensus {
+		orders_msg.CabCallConsensus[id] = *val
 	}
 	return orders_msg
 }
 
-func getConfirmedOrders(id string, orders Orders, alive_elevators []string) ConfirmedOrders {
+func getConfirmedOrders(orders Orders, alive_elevators []string) ConfirmedOrders {
 	var confirmed_orders ConfirmedOrders
 	confirmed_orders.CabCalls = make(map[string]*[N_FLOORS]bool)
 
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < 2; btn++ {
-			if orders.Calls[id][btn][floor] == OS_Confirmed {
+			if orders.HallCalls[floor][btn] == OS_Confirmed {
 				confirmed_orders.HallCalls[floor][btn] = true
 			}
 		}
@@ -183,35 +234,20 @@ func getConfirmedOrders(id string, orders Orders, alive_elevators []string) Conf
 	for _, elev_id := range alive_elevators {
 		confirmed_orders.CabCalls[elev_id] = &[N_FLOORS]bool{}
 		for floor := 0; floor < N_FLOORS; floor++ {
-			if orders.Calls[elev_id][elevio.BT_Cab][floor] == OS_Confirmed {
+			if orders.CabCalls[elev_id][floor] == OS_Confirmed {
 				confirmed_orders.CabCalls[elev_id][floor] = true
 			}
 		}
 	}
 	return confirmed_orders
 }
-
-func barrierCheck(floor int, btn int, remote_orders OrdersMSG, orders Orders, alive_elevators []string) bool {
+func consensusCheck(local_consensus []string, remote_consensus []string, alive_elevators []string) bool {
 	for _, elev_id := range alive_elevators {
-		if orders.Calls[elev_id][btn][floor] != OS_Unconfirmed {
-			return false
-		}
-		if remote_orders.Calls[elev_id][btn][floor] != OS_Unconfirmed {
+		if !contains(local_consensus, elev_id) || !contains(remote_consensus, elev_id) {
 			return false
 		}
 	}
 	return true
-}
-func setAllLights(id string, orders Orders) {
-	for floor := 0; floor < N_FLOORS; floor++ {
-		for btn := 0; btn < N_BTN_TYPES; btn++ {
-			is_order := false
-			if orders.Calls[id][btn][floor] == OS_Confirmed {
-				is_order = true
-			}
-			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, is_order)
-		}
-	}
 }
 
 func contains(s []string, e string) bool {
