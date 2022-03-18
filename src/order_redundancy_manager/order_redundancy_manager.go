@@ -94,7 +94,7 @@ func OrderRedundancyManager(
 					if btn == elevio.BT_Cab {
 						if orders.Calls[remote_orders.Id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
 							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
-							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
+							if barrierCheck(floor, btn, remote_orders, orders, alive_elevators) {
 								orders.Calls[remote_orders.Id][btn][floor] = OS_Confirmed
 								new_confirmed_order = true
 							}
@@ -103,10 +103,9 @@ func OrderRedundancyManager(
 						if orders.Calls[id][btn][floor] <= remote_orders.Calls[remote_orders.Id][btn][floor] {
 							orders.Calls[id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
 							orders.Calls[remote_orders.Id][btn][floor] = remote_orders.Calls[remote_orders.Id][btn][floor]
-							if barrierCheck(remote_orders.Id, floor, btn, orders, alive_elevators) {
+							if barrierCheck(floor, btn, remote_orders, orders, alive_elevators) {
 								orders.Calls[id][btn][floor] = OS_Confirmed
 								new_confirmed_order = true
-
 							}
 						}
 					}
@@ -192,9 +191,12 @@ func getConfirmedOrders(id string, orders Orders, alive_elevators []string) Conf
 	return confirmed_orders
 }
 
-func barrierCheck(id string, floor int, btn int, orders Orders, alive_elevators []string) bool {
+func barrierCheck(floor int, btn int, remote_orders OrdersMSG, orders Orders, alive_elevators []string) bool {
 	for _, elev_id := range alive_elevators {
 		if orders.Calls[elev_id][btn][floor] != OS_Unconfirmed {
+			return false
+		}
+		if remote_orders.Calls[elev_id][btn][floor] != OS_Unconfirmed {
 			return false
 		}
 	}
