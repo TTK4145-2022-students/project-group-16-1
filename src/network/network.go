@@ -7,12 +7,13 @@ import (
 	"Elevator-project/src/order_redundancy_manager"
 )
 
-func Network(id string,
+func Network(
 	peerUpdateCh chan peers.PeerUpdate,
 	stateTX chan elevator_control.ElevatorState,
 	stateRX chan elevator_control.ElevatorState,
 	orderTX chan order_redundancy_manager.OrdersMSG,
-	orderRX chan order_redundancy_manager.OrdersMSG) {
+	orderRX chan order_redundancy_manager.OrdersMSG,
+	id string) {
 
 	peerTxEnable := make(chan bool)
 	go peers.Transmitter(27773, id, peerTxEnable)
