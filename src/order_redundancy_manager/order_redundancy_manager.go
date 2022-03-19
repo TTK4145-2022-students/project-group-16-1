@@ -40,14 +40,14 @@ type ConfirmedOrders struct {
 }
 
 func OrderRedundancyManager(
-	orm_remoteOrders <-chan OrdersMSG,
-	drv_buttons <-chan elevio.ButtonEvent,
-	ec_localOrderServed <-chan elevio.ButtonEvent,
-	orm_newElevDetected <-chan string,
-	orm_elevsLost <-chan []string,
-	orm_disconnected <-chan bool,
-	orm_confirmedOrders chan<- ConfirmedOrders,
-	orm_localOrders chan<- OrdersMSG,
+	net_or_remoteOrders <-chan OrdersMSG,
+	drv_or_buttons <-chan elevio.ButtonEvent,
+	ec_or_localOrderServed <-chan elevio.ButtonEvent,
+	al_or_newElevDetected <-chan string,
+	al_or_elevsLost <-chan []string,
+	al_or_disconnected <-chan bool,
+	or_oa_confirmedOrders chan<- ConfirmedOrders,
+	or_net_localOrders chan<- OrdersMSG,
 	id string) {
 
 	var alive_elevators []string
@@ -65,13 +65,13 @@ func OrderRedundancyManager(
 
 	for {
 		select {
-		case new_elev := <-orm_newElevDetected:
+		case new_elev := <-al_or_newElevDetected:
 			alive_elevators = append(alive_elevators, new_elev)
 			if _, ok := orders.CabCalls[new_elev]; !ok {
 				orders.CabCalls[new_elev] = &[N_FLOORS]OrderState{}
 				orders.CabCallConsensus[new_elev] = &[N_FLOORS][]string{}
 			}
-		case lost_elevs := <-orm_elevsLost:
+		case lost_elevs := <-al_or_elevsLost:
 			for i := range lost_elevs {
 				alive_elevators = remove(alive_elevators, lost_elevs[i])
 				// Set cabcall state to unknown if not confirmed
@@ -81,7 +81,7 @@ func OrderRedundancyManager(
 					}
 				}
 			}
-		case <-orm_disconnected:
+		case <-al_or_disconnected:
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for btn := 0; btn < 2; btn++ {
 					switch orders.HallCalls[floor][btn] {
@@ -93,7 +93,7 @@ func OrderRedundancyManager(
 				}
 
 			}
-		case remote_orders := <-orm_remoteOrders:
+		case remote_orders := <-net_or_remoteOrders:
 			// Check if elevator is alive
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
@@ -140,7 +140,7 @@ func OrderRedundancyManager(
 
 			}
 
-		case button_event := <-drv_buttons:
+		case button_event := <-drv_or_buttons:
 			floor := button_event.Floor
 			btn := button_event.Button
 			switch btn {
@@ -162,7 +162,7 @@ func OrderRedundancyManager(
 
 			}
 
-		case served_order := <-ec_localOrderServed:
+		case served_order := <-ec_or_localOrderServed:
 			floor := served_order.Floor
 			btn := served_order.Button
 			switch btn {
@@ -180,9 +180,9 @@ func OrderRedundancyManager(
 
 		case <-periodicTimeout:
 			orders_msg := createOrdersMSG(id, orders)
-			orm_localOrders <- orders_msg
+			or_net_localOrders <- orders_msg
 			confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
-			orm_confirmedOrders <- confirmed_orders
+			or_oa_confirmedOrders <- confirmed_orders
 			io_setAllLights(id, orders)
 			periodicTimeout = time.After(INTERVAL)
 		}
