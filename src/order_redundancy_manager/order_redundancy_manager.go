@@ -2,7 +2,6 @@ package order_redundancy_manager
 
 import (
 	"Elevator-project/src/elevio"
-	"fmt"
 	"time"
 )
 
@@ -99,7 +98,6 @@ func OrderRedundancyManager(
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
-			fmt.Println(remote_orders.CabCalls)
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for btn := 0; btn < 2; btn++ {
 					if orders.HallCalls[floor][btn] <= remote_orders.HallCalls[floor][btn] {

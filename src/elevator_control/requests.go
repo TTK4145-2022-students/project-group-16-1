@@ -138,10 +138,11 @@ func requests_shouldClearImmediately(e *Elevator) []Button {
 			if e.requests[e.floor][B_HallUp] == true {
 				e.requests[e.floor][B_HallUp] = false
 				should_clear_btns = append(should_clear_btns, B_HallUp)
-			}
-			if e.requests[e.floor][B_HallDown] == true {
+				e.dirn = D_Up
+			} else if e.requests[e.floor][B_HallDown] == true {
 				e.requests[e.floor][B_HallDown] = false
 				should_clear_btns = append(should_clear_btns, B_HallDown)
+				e.dirn = D_Down
 			}
 		}
 		if e.requests[e.floor][B_Cab] == true {
