@@ -35,12 +35,12 @@ func ElevatorControl(
 
 	for {
 		select {
-		case a := <-oa_ec_assignedOrders:
+		case assigned_orders := <-oa_ec_assignedOrders:
 			fmt.Println("--------------")
 			fmt.Println("Jumping into [onRequestUpdate]")
 			elevator_print(elevator)
 
-			elevator.requests = a
+			elevator.requests = assigned_orders
 
 			switch elevator.behaviour {
 			case EB_DoorOpen, EB_Obstructed:
@@ -128,7 +128,30 @@ func ElevatorControl(
 		case <-drv_ec_stop:
 
 		case <-door_timer.C:
-			fsm_onDoorTimeout()
+			fmt.Println("Jumping into [fsm_onDoorTimeout]")
+			elevator_print(elevator)
+			switch elevator.behaviour {
+			case EB_DoorOpen:
+				a := requests_nextAction(elevator)
+				elevator.dirn = a.dirn
+				elevator.behaviour = a.behaviour
+
+				switch elevator.behaviour {
+				case EB_DoorOpen:
+					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					requests_clearAtCurrentFloor(elevator)
+				case EB_Idle, EB_Moving:
+					io_setDoorOpenLamp(false)
+					io_setMotorDirection(elevator.dirn)
+				}
+			case EB_Obstructed:
+				door_timer.Reset(elevator.config.doorOpenDuration_s)
+			default:
+			}
+			fmt.Println("New state:")
+			elevator_print(elevator)
+			fmt.Println("--------------")
+
 		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG()
 			net_elevatorState <- elevator_state
