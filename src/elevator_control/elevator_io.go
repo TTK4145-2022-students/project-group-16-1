@@ -51,7 +51,7 @@ func _setStopLamp(value bool) {
 	elevio.SetStopLamp(value)
 }
 
-func createElevatorStateMSG() ElevatorState {
+func createElevatorStateMSG(elevator *Elevator, id string) ElevatorState {
 	var elevator_state ElevatorState
 	elevator_state.Behaviour = elevator.behaviour.String()
 	elevator_state.Dirn = elevator.dirn.String()

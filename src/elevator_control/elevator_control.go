@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-var elevator *Elevator
-var door_timer *time.Timer
-var id string
-
 const N_FLOORS = 4 //REMOVE THIS
 const N_BTN_TYPES = 3
 const HARDWARE_ADDR = "localhost:15657"
@@ -25,12 +21,16 @@ func ElevatorControl(
 	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	local_id string) {
 	println("Elevator control started!")
-	id = local_id
+
+	elevator := &Elevator{}
+	id := local_id
+	var door_timer *time.Timer
 	// Needed for initing timer!
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
 
-	fsm_init()
+	fsm_init(elevator)
+	elevator_print(elevator)
 	send_state_timeout := time.After(INTERVAL)
 
 	for {
@@ -51,10 +51,10 @@ func ElevatorControl(
 				}
 
 			case EB_Idle:
-				a := requests_nextAction(elevator)
+				next_action := requests_nextAction(elevator)
 
-				elevator.dirn = a.dirn
-				elevator.behaviour = a.behaviour
+				elevator.dirn = next_action.dirn
+				elevator.behaviour = next_action.behaviour
 				switch elevator.behaviour {
 				case EB_DoorOpen:
 					io_setDoorOpenLamp(true)
@@ -88,7 +88,9 @@ func ElevatorControl(
 
 			switch elevator.behaviour {
 			case EB_Moving:
+
 				if requests_shouldStop(elevator) {
+
 					io_setMotorDirection(D_Stop)
 					io_setDoorOpenLamp(true)
 					should_clear_btns := requests_clearAtCurrentFloor(elevator)
@@ -153,7 +155,7 @@ func ElevatorControl(
 			fmt.Println("--------------")
 
 		case <-send_state_timeout:
-			elevator_state := createElevatorStateMSG()
+			elevator_state := createElevatorStateMSG(elevator, id)
 			net_elevatorState <- elevator_state
 			ec_oa_localElevatorState <- elevator_state
 			send_state_timeout = time.After(INTERVAL)

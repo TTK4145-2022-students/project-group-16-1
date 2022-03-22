@@ -12,7 +12,6 @@ const (
 	EB_DoorOpen
 	EB_Moving
 	EB_Obstructed
-	EB_StopButton
 )
 
 type ClearRequestVariant int
@@ -44,7 +43,7 @@ type ElevatorState struct {
 
 func (ev ElevatorBehaviour) String() string {
 	behaviours := [...]string{"idle", "doorOpen", "moving", "obstructed", "stopBtn"}
-	if ev < EB_Idle || ev > EB_StopButton {
+	if ev < EB_Idle || ev > EB_Obstructed {
 		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(ev))
 	}
 	return behaviours[ev]
@@ -54,8 +53,8 @@ func elevator_print(elevator *Elevator) {
 	fmt.Printf("Floor: %d\n Direction: %s\n Requests: %v\n Behaviour: %s\n", elevator.floor, elevator.dirn.String(), elevator.requests, elevator.behaviour.String())
 }
 
-func elevator_uninitialised() *Elevator {
-	elevator := &Elevator{
+func elevator_uninitialised() Elevator {
+	elevator := Elevator{
 		floor:     -1,
 		dirn:      D_Stop,
 		behaviour: EB_Idle,
