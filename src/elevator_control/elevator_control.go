@@ -16,7 +16,7 @@ func ElevatorControl(
 	drv_ec_floor <-chan int,
 	drv_ec_obstr <-chan bool,
 	drv_ec_stop <-chan bool,
-	net_elevatorState chan<- ElevatorState,
+	net_ec_elevatorState chan<- ElevatorState,
 	ec_oa_localElevatorState chan<- ElevatorState,
 	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	local_id string) {
@@ -145,7 +145,7 @@ func ElevatorControl(
 
 		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG(elevator, id)
-			net_elevatorState <- elevator_state
+			net_ec_elevatorState <- elevator_state
 			ec_oa_localElevatorState <- elevator_state
 			send_state_timeout = time.After(INTERVAL)
 		}

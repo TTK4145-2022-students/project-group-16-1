@@ -39,6 +39,7 @@ type ElevatorState struct {
 	Floor     int
 	Dirn      string
 	Id        string
+	Available bool
 }
 
 func (ev ElevatorBehaviour) String() string {

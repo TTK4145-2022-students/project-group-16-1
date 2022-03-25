@@ -4,6 +4,7 @@ import (
 	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/order_redundancy_manager"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os/exec"
 )
@@ -98,10 +99,7 @@ func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[st
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]JsonIdState)
 	for id, elev_state := range states {
-		switch elev_state.Behaviour {
-		case elevator_control.EB_DoorOpen.String(),
-			elevator_control.EB_Idle.String(),
-			elevator_control.EB_Moving.String():
+		if elev_state.Available {
 			if _, ok := orders.CabCalls[id]; ok {
 				msg.States[id] = JsonIdState{elev_state.Behaviour, elev_state.Floor, elev_state.Dirn, orders.CabCalls[id]}
 			}
@@ -117,7 +115,9 @@ func assign(orders order_redundancy_manager.ConfirmedOrders,
 
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
-		log.Fatal("order assigner failed")
+		fmt.Println(string(json_msg))
+		fmt.Println("order assigner failed -don't worry, be happy")
+		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
 	var msg map[string][N_FLOORS][N_BTN_TYPES]bool
 	err = json.Unmarshal(assigned_orders, &msg)
