@@ -57,6 +57,6 @@ func createElevatorStateMSG(elevator *Elevator, id string) ElevatorState {
 	elevator_state.Dirn = elevator.dirn.String()
 	elevator_state.Floor = elevator.floor
 	elevator_state.Id = id
-	elevator_state.Available = !(elevator.obstructed && elevator.behaviour == EB_DoorOpen)
+	elevator_state.Available = !((elevator.obstructed && elevator.behaviour == EB_DoorOpen) || elevator.too_late)
 	return elevator_state
 }

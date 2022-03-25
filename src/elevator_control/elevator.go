@@ -27,6 +27,7 @@ type Elevator struct {
 	behaviour  ElevatorBehaviour
 	config     config
 	obstructed bool
+	too_late   bool
 }
 
 type config struct {

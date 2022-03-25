@@ -25,15 +25,22 @@ func ElevatorControl(
 	elevator := &Elevator{}
 	id := local_id
 	var door_timer *time.Timer
+	var is_fucked_timer *time.Timer
+	hardware_timer_stopped := true
 	// Needed for initing timer!
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
+	is_fucked_timer = time.NewTimer(time.Second * 15)
+	if !is_fucked_timer.Stop() {
+		<-is_fucked_timer.C
+	}
 
 	elevator_init(elevator)
 	elevator_print(elevator)
 	send_state_timeout := time.After(INTERVAL)
 
 	for {
+		fmt.Println(elevator.too_late)
 		select {
 		case assigned_orders := <-oa_ec_assignedOrders:
 			fmt.Println("--------------")
@@ -42,6 +49,18 @@ func ElevatorControl(
 
 			elevator.requests = assigned_orders
 
+			if hardware_timer_stopped {
+				for floor := 0; floor < N_FLOORS; floor++ {
+					for btn := 0; btn < N_BTN_TYPES; btn++ {
+						if assigned_orders[floor][btn] {
+							if !(floor == elevator.floor) {
+								is_fucked_timer.Reset(time.Second * 15)
+								hardware_timer_stopped = false
+							}
+						}
+					}
+				}
+			}
 			switch elevator.behaviour {
 			case EB_DoorOpen:
 				should_clear_btns := requests_shouldClearImmediately(elevator)
@@ -81,6 +100,10 @@ func ElevatorControl(
 			fmt.Println("--------------")
 			fmt.Println("Jumping into [fsm_onFloorArrival]")
 			elevator_print(elevator)
+
+			is_fucked_timer.Stop()
+			hardware_timer_stopped = true
+			elevator.too_late = false
 
 			elevator.floor = new_floor
 
@@ -148,6 +171,9 @@ func ElevatorControl(
 			net_ec_elevatorState <- elevator_state
 			ec_oa_localElevatorState <- elevator_state
 			send_state_timeout = time.After(INTERVAL)
+
+		case <-is_fucked_timer.C:
+			elevator.too_late = true
 		}
 	}
 }
