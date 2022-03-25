@@ -1,15 +1,11 @@
 package elevator_control
 
 import (
+	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevio"
 	"fmt"
 	"time"
 )
-
-const N_FLOORS = 4 //REMOVE THIS
-const N_BTN_TYPES = 3
-const HARDWARE_ADDR = "localhost:15657"
-const INTERVAL = 50 * time.Millisecond
 
 func ElevatorControl(
 	oa_ec_assignedOrders <-chan [N_FLOORS][N_BTN_TYPES]bool,
@@ -100,8 +96,8 @@ func ElevatorControl(
 			fmt.Println("--------------")
 			fmt.Println("Jumping into [fsm_onFloorArrival]")
 			elevator_print(elevator)
-
 			is_fucked_timer.Stop()
+
 			hardware_timer_stopped = true
 			elevator.too_late = false
 

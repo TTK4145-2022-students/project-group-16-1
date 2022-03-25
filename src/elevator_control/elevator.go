@@ -1,6 +1,7 @@
 package elevator_control
 
 import (
+	. "Elevator-project/src/constants"
 	"fmt"
 	"time"
 )

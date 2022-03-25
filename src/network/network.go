@@ -4,15 +4,15 @@ import (
 	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/network/bcast"
 	"Elevator-project/src/network/peers"
-	"Elevator-project/src/order_redundancy_manager"
+	"Elevator-project/src/order_redundancy"
 )
 
 func Network(
 	peerUpdateCh chan peers.PeerUpdate,
 	stateTX chan elevator_control.ElevatorState,
 	stateRX chan elevator_control.ElevatorState,
-	orderTX chan order_redundancy_manager.OrdersMSG,
-	orderRX chan order_redundancy_manager.OrdersMSG,
+	orderTX chan order_redundancy.OrdersMSG,
+	orderRX chan order_redundancy.OrdersMSG,
 	id string) {
 
 	peerTxEnable := make(chan bool)

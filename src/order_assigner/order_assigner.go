@@ -1,16 +1,14 @@
 package order_assigner
 
 import (
+	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevator_control"
-	"Elevator-project/src/order_redundancy_manager"
+	"Elevator-project/src/order_redundancy"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os/exec"
 )
-
-const N_FLOORS = 4 //REMOVE THIS
-const N_BTN_TYPES = 3
 
 type JsonIdState struct {
 	Behaviour   string          `json:"behaviour"`
@@ -25,7 +23,7 @@ type JsonProxy struct {
 }
 
 func OrderAssigner(
-	or_oa_confirmedOrders <-chan order_redundancy_manager.ConfirmedOrders,
+	or_oa_confirmedOrders <-chan order_redundancy.ConfirmedOrders,
 	net_elevatorState <-chan elevator_control.ElevatorState,
 	ec_oa_localElevatorState <-chan elevator_control.ElevatorState,
 	al_oa_newElevDetected <-chan string,
@@ -33,7 +31,7 @@ func OrderAssigner(
 	oa_ec_assignedOrders chan<- [N_FLOORS][N_BTN_TYPES]bool,
 	id string) {
 
-	confirmed_orders := order_redundancy_manager.ConfirmedOrders{}
+	confirmed_orders := order_redundancy.ConfirmedOrders{}
 	elevator_states := make(map[string]elevator_control.ElevatorState)
 
 	elevator_states[id] = elevator_control.ElevatorState{}
@@ -94,7 +92,7 @@ func OrderAssigner(
 
 }
 
-func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[string]elevator_control.ElevatorState) []byte {
+func generateJson(orders order_redundancy.ConfirmedOrders, states map[string]elevator_control.ElevatorState) []byte {
 	var msg JsonProxy
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]JsonIdState)
@@ -109,7 +107,7 @@ func generateJson(orders order_redundancy_manager.ConfirmedOrders, states map[st
 	return json_msg
 }
 
-func assign(orders order_redundancy_manager.ConfirmedOrders,
+func assign(orders order_redundancy.ConfirmedOrders,
 	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 	json_msg := generateJson(orders, states)
 

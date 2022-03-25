@@ -2,18 +2,15 @@ package main
 
 import (
 	"Elevator-project/src/alive_listener"
+	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevator_control"
 	"Elevator-project/src/elevio"
 	"Elevator-project/src/network"
 	"Elevator-project/src/network/peers"
 	"Elevator-project/src/order_assigner"
-	"Elevator-project/src/order_redundancy_manager"
+	"Elevator-project/src/order_redundancy"
 	"flag"
 )
-
-const N_FLOORS = 4 //REMOVE THIS
-const N_BTN_TYPES = 3
-const HARDWARE_ADDR = "localhost:15657"
 
 func main() {
 	println("Started!")
@@ -22,6 +19,7 @@ func main() {
 	var id string
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
+
 	//Channel creation:
 	//Naming convention: from_to_channelName
 
@@ -46,16 +44,16 @@ func main() {
 	al_or_elevsLost := make(chan []string, 1)
 	al_or_disconnected := make(chan bool, 1)
 
-	//or: order_redundancy - keeping track and confirming orders
-	or_oa_confirmedOrders := make(chan order_redundancy_manager.ConfirmedOrders, 1)
-	or_net_localOrders := make(chan order_redundancy_manager.OrdersMSG, 1)
+	//or:order_redundancy - keeping track and confirming orders
+	or_oa_confirmedOrders := make(chan order_redundancy.ConfirmedOrders, 1)
+	or_net_localOrders := make(chan order_redundancy.OrdersMSG, 1)
 
 	//net: network
 	net_al_peersUpdate := make(chan peers.PeerUpdate, 1)
-	net_or_remoteOrders := make(chan order_redundancy_manager.OrdersMSG, 1)
+	net_or_remoteOrders := make(chan order_redundancy.OrdersMSG, 1)
 	net_oa_elevatorStateRX := make(chan elevator_control.ElevatorState, 1)
 
-	elevio.Init(elevator_control.HARDWARE_ADDR, elevator_control.N_FLOORS)
+	elevio.Init(HARDWARE_ADDR, N_FLOORS)
 	go alive_listener.AliveListener(
 		net_al_peersUpdate,
 		al_or_newElevDetected,
@@ -93,7 +91,7 @@ func main() {
 		net_or_remoteOrders,
 		id)
 
-	go order_redundancy_manager.OrderRedundancyManager(
+	go order_redundancy.OrderRedundancyManager(
 		net_or_remoteOrders,
 		drv_or_buttons,
 		ec_or_localOrderServed,

@@ -1,14 +1,10 @@
-package order_redundancy_manager
+package order_redundancy
 
 import (
+	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevio"
 	"time"
 )
-
-const N_FLOORS = 4 //REMOVE THIS
-const N_BUTTONS = 3
-const HARDWARE_ADDR = "localhost:15657"
-const INTERVAL = 45 * time.Millisecond
 
 type OrderState int
 
@@ -191,7 +187,7 @@ func OrderRedundancyManager(
 
 func io_setAllLights(id string, orders Orders) {
 	for floor := 0; floor < N_FLOORS; floor++ {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			is_order := false
 			switch elevio.ButtonType(btn) {
 			case elevio.BT_Cab:

@@ -1,6 +1,9 @@
 package elevator_control
 
-import "fmt"
+import (
+	. "Elevator-project/src/constants"
+	"fmt"
+)
 
 type Action struct {
 	dirn      Dirn
