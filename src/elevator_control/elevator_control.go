@@ -29,7 +29,7 @@ func ElevatorControl(
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
 
-	fsm_init(elevator)
+	elevator_init(elevator)
 	elevator_print(elevator)
 	send_state_timeout := time.After(INTERVAL)
 
@@ -43,7 +43,7 @@ func ElevatorControl(
 			elevator.requests = assigned_orders
 
 			switch elevator.behaviour {
-			case EB_DoorOpen, EB_Obstructed:
+			case EB_DoorOpen:
 				should_clear_btns := requests_shouldClearImmediately(elevator)
 				for _, val := range should_clear_btns {
 					ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
@@ -112,31 +112,23 @@ func ElevatorControl(
 			fmt.Println("--------------")
 			fmt.Println("Jumping into [fsm_onObstruction")
 			elevator_print(elevator)
-			switch elevator.behaviour {
-			case EB_DoorOpen:
-				if obstructed {
-					elevator.behaviour = EB_Obstructed
-				}
-			case EB_Obstructed:
-				if !obstructed {
-					elevator.behaviour = EB_DoorOpen
-				}
-			default:
-			}
+			elevator.obstructed = obstructed
 			fmt.Println("New state:")
 			elevator_print(elevator)
 			fmt.Println("--------------")
-
-		case <-drv_ec_stop:
 
 		case <-door_timer.C:
 			fmt.Println("Jumping into [fsm_onDoorTimeout]")
 			elevator_print(elevator)
 			switch elevator.behaviour {
 			case EB_DoorOpen:
-				a := requests_nextAction(elevator)
-				elevator.dirn = a.dirn
-				elevator.behaviour = a.behaviour
+				if elevator.obstructed {
+					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					break
+				}
+				next_action := requests_nextAction(elevator)
+				elevator.dirn = next_action.dirn
+				elevator.behaviour = next_action.behaviour
 
 				switch elevator.behaviour {
 				case EB_DoorOpen:
@@ -146,9 +138,6 @@ func ElevatorControl(
 					io_setDoorOpenLamp(false)
 					io_setMotorDirection(elevator.dirn)
 				}
-			case EB_Obstructed:
-				door_timer.Reset(elevator.config.doorOpenDuration_s)
-			default:
 			}
 			fmt.Println("New state:")
 			elevator_print(elevator)

@@ -11,7 +11,6 @@ const (
 	EB_Idle ElevatorBehaviour = iota
 	EB_DoorOpen
 	EB_Moving
-	EB_Obstructed
 )
 
 type ClearRequestVariant int
@@ -22,11 +21,12 @@ const (
 )
 
 type Elevator struct {
-	floor     int
-	dirn      Dirn
-	requests  [N_FLOORS][N_BTN_TYPES]bool
-	behaviour ElevatorBehaviour
-	config    config
+	floor      int
+	dirn       Dirn
+	requests   [N_FLOORS][N_BTN_TYPES]bool
+	behaviour  ElevatorBehaviour
+	config     config
+	obstructed bool
 }
 
 type config struct {
@@ -42,9 +42,9 @@ type ElevatorState struct {
 }
 
 func (ev ElevatorBehaviour) String() string {
-	behaviours := [...]string{"idle", "doorOpen", "moving", "obstructed", "stopBtn"}
-	if ev < EB_Idle || ev > EB_Obstructed {
-		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(ev))
+	behaviours := [...]string{"idle", "doorOpen", "moving"}
+	if ev < EB_Idle || ev > EB_Moving {
+		return fmt.Sprintf("An undefined behaviour was given: (%d)", int(ev))
 	}
 	return behaviours[ev]
 }

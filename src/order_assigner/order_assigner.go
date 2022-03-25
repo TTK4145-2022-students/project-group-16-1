@@ -117,7 +117,7 @@ func assign(orders order_redundancy_manager.ConfirmedOrders,
 
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("order assigner failed")
 	}
 	var msg map[string][N_FLOORS][N_BTN_TYPES]bool
 	err = json.Unmarshal(assigned_orders, &msg)
