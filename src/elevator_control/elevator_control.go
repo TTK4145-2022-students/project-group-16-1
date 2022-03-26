@@ -39,17 +39,15 @@ func ElevatorControl(
 		fmt.Println(elevator.too_late)
 		select {
 		case assigned_orders := <-oa_ec_assignedOrders:
-			fmt.Println("--------------")
-			fmt.Println("Jumping into [onRequestUpdate]")
-			elevator_print(elevator)
-
 			elevator.requests = assigned_orders
 
-			if hardware_timer_stopped {
-				for floor := 0; floor < N_FLOORS; floor++ {
-					for btn := 0; btn < N_BTN_TYPES; btn++ {
-						if assigned_orders[floor][btn] {
-							if !(floor == elevator.floor) {
+			no_local_orders := true
+			for floor := 0; floor < N_FLOORS; floor++ {
+				for btn := 0; btn < N_BTN_TYPES; btn++ {
+					if assigned_orders[floor][btn] {
+						no_local_orders = false
+						if !(floor == elevator.floor) {
+							if hardware_timer_stopped {
 								is_fucked_timer.Reset(time.Second * 15)
 								hardware_timer_stopped = false
 							}
@@ -57,6 +55,11 @@ func ElevatorControl(
 					}
 				}
 			}
+			if no_local_orders {
+				is_fucked_timer.Stop()
+				hardware_timer_stopped = true
+			}
+
 			switch elevator.behaviour {
 			case EB_DoorOpen:
 				should_clear_btns := requests_shouldClearImmediately(elevator)
@@ -87,17 +90,9 @@ func ElevatorControl(
 
 			}
 
-			fmt.Println("New state:")
-			elevator_print(elevator)
-			fmt.Println("--------------")
-
 		case new_floor := <-drv_ec_floor:
 
-			fmt.Println("--------------")
-			fmt.Println("Jumping into [fsm_onFloorArrival]")
-			elevator_print(elevator)
 			is_fucked_timer.Stop()
-
 			hardware_timer_stopped = true
 			elevator.too_late = false
 
@@ -123,22 +118,11 @@ func ElevatorControl(
 			default:
 			}
 
-			fmt.Println("New state:")
-			elevator_print(elevator)
-			fmt.Println("--------------")
-
 		case obstructed := <-drv_ec_obstr:
-			fmt.Println("--------------")
-			fmt.Println("Jumping into [fsm_onObstruction")
-			elevator_print(elevator)
+
 			elevator.obstructed = obstructed
-			fmt.Println("New state:")
-			elevator_print(elevator)
-			fmt.Println("--------------")
 
 		case <-door_timer.C:
-			fmt.Println("Jumping into [fsm_onDoorTimeout]")
-			elevator_print(elevator)
 			switch elevator.behaviour {
 			case EB_DoorOpen:
 				if elevator.obstructed {
@@ -158,9 +142,6 @@ func ElevatorControl(
 					io_setMotorDirection(elevator.dirn)
 				}
 			}
-			fmt.Println("New state:")
-			elevator_print(elevator)
-			fmt.Println("--------------")
 
 		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG(elevator, id)

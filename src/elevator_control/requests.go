@@ -2,7 +2,6 @@ package elevator_control
 
 import (
 	. "Elevator-project/src/constants"
-	"fmt"
 )
 
 type Action struct {
@@ -97,7 +96,6 @@ func requests_nextAction(e *Elevator) Action {
 			action.behaviour = EB_Idle
 			action.dirn = D_Stop
 		}
-		fmt.Printf("%+v", action)
 		return action
 
 	default:
