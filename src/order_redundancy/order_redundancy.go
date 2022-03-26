@@ -3,6 +3,7 @@ package order_redundancy
 import (
 	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevio"
+	"fmt"
 	"time"
 )
 
@@ -57,7 +58,7 @@ func OrderRedundancyManager(
 
 	io_setAllLights(id, orders)
 
-	periodicTimeout := time.After(INTERVAL)
+	periodicTimeout := time.NewTicker(INTERVAL)
 
 	for {
 		select {
@@ -68,18 +69,23 @@ func OrderRedundancyManager(
 				orders.CabCallConsensus[new_elev] = &[N_FLOORS][]string{}
 			}
 		case lost_elevs := <-al_or_elevsLost:
-			for i := range lost_elevs {
+			for i, lost_id := range lost_elevs {
 				alive_elevators = remove(alive_elevators, lost_elevs[i])
-				// Set cabcall state to unknown if not confirmed
+				// Set cabcall state to unknown if not confirmed, but not own cabcalls
+				if id == lost_id {
+					break
+				}
 				for floor := 0; floor < N_FLOORS; floor++ {
 					if orders.CabCalls[lost_elevs[i]][floor] != OS_Confirmed {
 						orders.CabCalls[lost_elevs[i]][floor] = OS_Unknown
+						orders.CabCallConsensus[lost_elevs[i]][floor] = []string{}
 					}
 				}
 			}
 		case <-al_or_disconnected:
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for btn := 0; btn < 2; btn++ {
+					orders.HallCallConsensus[floor][btn] = []string{}
 					switch orders.HallCalls[floor][btn] {
 					case OS_Unconfirmed, OS_None:
 						orders.HallCalls[floor][btn] = OS_Unknown
@@ -94,46 +100,83 @@ func OrderRedundancyManager(
 			if !contains(alive_elevators, remote_orders.Id) {
 				break
 			}
-			for floor := 0; floor < N_FLOORS; floor++ {
-				for btn := 0; btn < 2; btn++ {
-					if orders.HallCalls[floor][btn] <= remote_orders.HallCalls[floor][btn] {
-						orders.HallCalls[floor][btn] = remote_orders.HallCalls[floor][btn]
-						if remote_orders.HallCalls[floor][btn] == OS_Unconfirmed {
-							if !contains(orders.HallCallConsensus[floor][btn], remote_orders.Id) {
-								orders.HallCallConsensus[floor][btn] = append(orders.HallCallConsensus[floor][btn], remote_orders.Id)
-							}
+
+			order_fsm := func(local_order_ptr *OrderState,
+				local_consensus_ptr *[]string,
+				remote_order OrderState,
+				remote_consensus []string) {
+				switch remote_order {
+				case OS_Unknown:
+					switch *local_order_ptr {
+					case OS_Unknown:
+					case OS_Confirmed:
+					case OS_None:
+					case OS_Unconfirmed:
+					}
+				case OS_Confirmed:
+					switch *local_order_ptr {
+					case OS_Unknown:
+						*local_order_ptr = remote_order
+						*local_consensus_ptr = addIdToConsensus(*local_consensus_ptr, id)
+						*local_consensus_ptr = addIdToConsensus(*local_consensus_ptr, remote_orders.Id)
+						if consensusCheck(*local_consensus_ptr, remote_consensus, alive_elevators) {
+							*local_order_ptr = OS_Confirmed
+						}
+					case OS_Confirmed:
+					case OS_None:
+					case OS_Unconfirmed:
+						*local_consensus_ptr = addIdToConsensus(*local_consensus_ptr, remote_orders.Id)
+						if consensusCheck(*local_consensus_ptr, remote_consensus, alive_elevators) {
+							*local_order_ptr = OS_Confirmed
 						}
 					}
-					//Consensus check
-					if orders.HallCalls[floor][btn] == OS_Unconfirmed && len(alive_elevators) > 1 {
-						if consensusCheck(orders.HallCallConsensus[floor][btn], remote_orders.HallCallConsensus[floor][btn], alive_elevators) {
-							orders.HallCalls[floor][btn] = OS_Confirmed
-							orders.HallCallConsensus[floor][btn] = []string{}
+				case OS_None:
+					switch *local_order_ptr {
+					case OS_Unknown:
+						*local_order_ptr = remote_order
+					case OS_Confirmed:
+						*local_order_ptr = remote_order
+						*local_consensus_ptr = []string{}
+						fmt.Println("Recieved NONE from remote while in confirmed")
+					case OS_None:
+					case OS_Unconfirmed:
+					}
+				case OS_Unconfirmed:
+					switch *local_order_ptr {
+					case OS_Unknown, OS_None, OS_Unconfirmed:
+						*local_order_ptr = remote_order
+						*local_consensus_ptr = addIdToConsensus(*local_consensus_ptr, id)
+						*local_consensus_ptr = addIdToConsensus(*local_consensus_ptr, remote_orders.Id)
+						if consensusCheck(*local_consensus_ptr, remote_consensus, alive_elevators) {
+							*local_order_ptr = OS_Confirmed
 						}
+
+					case OS_Confirmed:
+					}
+
+				}
+			}
+			// Loop through hallcalls
+			if len(alive_elevators) > 1 {
+				for floor := 0; floor < N_FLOORS; floor++ {
+					for btn := 0; btn < 2; btn++ {
+						local_order_ptr := &orders.HallCalls[floor][btn]
+						local_consensus_ptr := &orders.HallCallConsensus[floor][btn]
+						remote_order := remote_orders.HallCalls[floor][btn]
+						remote_consensus := remote_orders.HallCallConsensus[floor][btn]
+						order_fsm(local_order_ptr, local_consensus_ptr, remote_order, remote_consensus)
 					}
 				}
 			}
-
+			// Loop through cabcalls
 			for elev_id := range orders.CabCalls {
 				for floor := 0; floor < N_FLOORS; floor++ {
-					if orders.CabCalls[elev_id][floor] <= remote_orders.CabCalls[elev_id][floor] {
-						orders.CabCalls[elev_id][floor] = remote_orders.CabCalls[elev_id][floor]
-						if remote_orders.CabCalls[elev_id][floor] == OS_Unconfirmed {
-							if !contains(orders.CabCallConsensus[elev_id][floor], remote_orders.Id) {
-								orders.CabCallConsensus[elev_id][floor] = append(orders.CabCallConsensus[elev_id][floor], remote_orders.Id)
-							}
-						}
-					}
-					//Consensus check
-					if orders.CabCalls[elev_id][floor] == OS_Unconfirmed {
-						if consensusCheck(orders.CabCallConsensus[elev_id][floor], remote_orders.CabCallConsensus[elev_id][floor], alive_elevators) {
-							orders.CabCalls[elev_id][floor] = OS_Confirmed
-							orders.CabCallConsensus[elev_id][floor] = []string{}
-						}
-					}
-
+					local_order_ptr := &orders.CabCalls[elev_id][floor]
+					local_consensus_ptr := &orders.CabCallConsensus[elev_id][floor]
+					remote_order := remote_orders.CabCalls[elev_id][floor]
+					remote_consensus := remote_orders.CabCallConsensus[elev_id][floor]
+					order_fsm(local_order_ptr, local_consensus_ptr, remote_order, remote_consensus)
 				}
-
 			}
 
 		case button_event := <-drv_or_buttons:
@@ -142,7 +185,7 @@ func OrderRedundancyManager(
 			switch btn {
 			case elevio.BT_Cab:
 				if orders.CabCalls[id][floor] != OS_Confirmed {
-					if len(alive_elevators) == 0 {
+					if len(alive_elevators) < 2 {
 						orders.CabCalls[id][floor] = OS_Confirmed
 					} else {
 						orders.CabCalls[id][floor] = OS_Unconfirmed
@@ -153,6 +196,7 @@ func OrderRedundancyManager(
 				if len(alive_elevators) > 1 {
 					if orders.HallCalls[floor][btn] != OS_Confirmed {
 						orders.HallCalls[floor][btn] = OS_Unconfirmed
+						orders.HallCallConsensus[floor][btn] = addIdToConsensus(orders.HallCallConsensus[floor][btn], id)
 					}
 				}
 
@@ -165,22 +209,24 @@ func OrderRedundancyManager(
 			case elevio.BT_Cab:
 				if orders.CabCalls[id][floor] == OS_Confirmed {
 					orders.CabCalls[id][floor] = OS_None
+					orders.CabCallConsensus[id][floor] = []string{}
 				}
 			case elevio.BT_HallUp, elevio.BT_HallDown:
 				if len(alive_elevators) > 1 {
 					orders.HallCalls[floor][btn] = OS_None
+					orders.HallCallConsensus[floor][btn] = []string{}
 				} else {
 					orders.HallCalls[floor][btn] = OS_Unknown
+					orders.HallCallConsensus[floor][btn] = []string{}
 				}
 			}
 
-		case <-periodicTimeout:
+		case <-periodicTimeout.C:
 			orders_msg := createOrdersMSG(id, orders)
 			or_net_localOrders <- orders_msg
 			confirmed_orders := getConfirmedOrders(id, orders, alive_elevators)
 			or_oa_confirmedOrders <- confirmed_orders
 			io_setAllLights(id, orders)
-			periodicTimeout = time.After(INTERVAL)
 		}
 	}
 }
@@ -274,4 +320,11 @@ func remove(s []string, r string) []string {
 		}
 	}
 	return s
+}
+
+func addIdToConsensus(consensus []string, remote_id string) []string {
+	if !contains(consensus, remote_id) {
+		return append(consensus, remote_id)
+	}
+	return consensus
 }

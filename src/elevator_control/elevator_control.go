@@ -3,7 +3,6 @@ package elevator_control
 import (
 	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevio"
-	"fmt"
 	"time"
 )
 
@@ -12,7 +11,7 @@ func ElevatorControl(
 	drv_ec_floor <-chan int,
 	drv_ec_obstr <-chan bool,
 	drv_ec_stop <-chan bool,
-	net_ec_elevatorState chan<- ElevatorState,
+	ec_net_elevatorState chan<- ElevatorState,
 	ec_oa_localElevatorState chan<- ElevatorState,
 	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	local_id string) {
@@ -36,7 +35,6 @@ func ElevatorControl(
 	send_state_timeout := time.After(INTERVAL)
 
 	for {
-		fmt.Println(elevator.too_late)
 		select {
 		case assigned_orders := <-oa_ec_assignedOrders:
 			elevator.requests = assigned_orders
@@ -146,7 +144,7 @@ func ElevatorControl(
 
 		case <-send_state_timeout:
 			elevator_state := createElevatorStateMSG(elevator, id)
-			net_ec_elevatorState <- elevator_state
+			ec_net_elevatorState <- elevator_state
 			ec_oa_localElevatorState <- elevator_state
 			send_state_timeout = time.After(INTERVAL)
 

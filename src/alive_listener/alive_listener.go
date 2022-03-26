@@ -12,6 +12,7 @@ func AliveListener(
 	al_or_disconnected chan<- bool,
 	al_oa_newElevDetected chan<- string,
 	al_oa_elevsLost chan<- []string,
+	id string,
 ) {
 	for {
 		elev_update := <-peersUpdate
@@ -23,10 +24,9 @@ func AliveListener(
 			al_or_elevsLost <- elev_update.Lost
 			al_oa_elevsLost <- elev_update.Lost
 		}
-		if len(elev_update.Peers) == 0 {
+		if contains(elev_update.Lost, id) {
 			al_or_disconnected <- true
 		}
-		fmt.Println("Network module started")
 
 		fmt.Printf("Peer update:\n")
 		fmt.Printf("  Peers:    %q\n", elev_update.Peers)
@@ -34,4 +34,13 @@ func AliveListener(
 		fmt.Printf("  Lost:     %q\n", elev_update.Lost)
 
 	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

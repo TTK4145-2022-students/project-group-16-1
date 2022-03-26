@@ -60,7 +60,8 @@ func main() {
 		al_or_elevsLost,
 		al_or_disconnected,
 		al_oa_newElevDetected,
-		al_oa_elevsLost)
+		al_oa_elevsLost,
+		id)
 	go elevio.PollButtons(drv_or_buttons)
 	go elevio.PollFloorSensor(drv_ec_floor)
 	go elevio.PollObstructionSwitch(drv_ec_obstr)

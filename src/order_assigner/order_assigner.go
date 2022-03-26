@@ -24,7 +24,7 @@ type JsonProxy struct {
 
 func OrderAssigner(
 	or_oa_confirmedOrders <-chan order_redundancy.ConfirmedOrders,
-	net_elevatorState <-chan elevator_control.ElevatorState,
+	net_oa_elevatorState <-chan elevator_control.ElevatorState,
 	ec_oa_localElevatorState <-chan elevator_control.ElevatorState,
 	al_oa_newElevDetected <-chan string,
 	al_oa_elevsLost <-chan []string,
@@ -63,7 +63,7 @@ func OrderAssigner(
 				oa_ec_assignedOrders <- local_assigned_orders
 			}
 
-		case state := <-net_elevatorState:
+		case state := <-net_oa_elevatorState:
 			if prev_state, ok := elevator_states[state.Id]; ok {
 
 				if prev_state != state {
@@ -123,6 +123,5 @@ func assign(orders order_redundancy.ConfirmedOrders,
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(msg[id])
 	return msg[id], false
 }
