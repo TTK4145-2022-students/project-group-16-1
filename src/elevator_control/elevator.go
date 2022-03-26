@@ -3,7 +3,6 @@ package elevator_control
 import (
 	. "Elevator-project/src/constants"
 	"fmt"
-	"time"
 )
 
 type ElevatorBehaviour int
@@ -14,26 +13,13 @@ const (
 	EB_Moving
 )
 
-type ClearRequestVariant int
-
-const (
-	CV_All ClearRequestVariant = iota
-	CV_InDirn
-)
-
 type Elevator struct {
 	floor      int
 	dirn       Dirn
 	requests   [N_FLOORS][N_BTN_TYPES]bool
 	behaviour  ElevatorBehaviour
-	config     config
 	obstructed bool
 	too_late   bool
-}
-
-type config struct {
-	clearRequestVariant ClearRequestVariant
-	doorOpenDuration_s  time.Duration
 }
 
 type ElevatorState struct {
@@ -61,9 +47,6 @@ func elevator_uninitialised() Elevator {
 		floor:     -1,
 		dirn:      D_Stop,
 		behaviour: EB_Idle,
-		config: config{
-			clearRequestVariant: CV_InDirn,
-			doorOpenDuration_s:  3 * time.Second},
 	}
 
 	return elevator

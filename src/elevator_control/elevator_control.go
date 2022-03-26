@@ -26,7 +26,7 @@ func ElevatorControl(
 	// Needed for initing timer!
 	door_timer = time.NewTimer(time.Second)
 	door_timer.Stop()
-	is_fucked_timer = time.NewTimer(time.Second * 15)
+	is_fucked_timer = time.NewTimer(IS_FUCKED_DURATION)
 	if !is_fucked_timer.Stop() {
 		<-is_fucked_timer.C
 	}
@@ -48,7 +48,7 @@ func ElevatorControl(
 						no_local_orders = false
 						if !(floor == elevator.floor) {
 							if hardware_timer_stopped {
-								is_fucked_timer.Reset(time.Second * 15)
+								is_fucked_timer.Reset(IS_FUCKED_DURATION)
 								hardware_timer_stopped = false
 							}
 						}
@@ -58,6 +58,7 @@ func ElevatorControl(
 			if no_local_orders {
 				is_fucked_timer.Stop()
 				hardware_timer_stopped = true
+				elevator.too_late = false
 			}
 
 			switch elevator.behaviour {
@@ -76,7 +77,7 @@ func ElevatorControl(
 				switch elevator.behaviour {
 				case EB_DoorOpen:
 					io_setDoorOpenLamp(true)
-					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					door_timer.Reset(DOOR_OPEN_DURATION)
 					should_clear_btns := requests_clearAtCurrentFloor(elevator)
 					for _, val := range should_clear_btns {
 						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
@@ -112,7 +113,7 @@ func ElevatorControl(
 						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(val)}
 
 					}
-					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					door_timer.Reset(DOOR_OPEN_DURATION)
 					elevator.behaviour = EB_DoorOpen
 				}
 			default:
@@ -126,7 +127,7 @@ func ElevatorControl(
 			switch elevator.behaviour {
 			case EB_DoorOpen:
 				if elevator.obstructed {
-					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					door_timer.Reset(DOOR_OPEN_DURATION)
 					break
 				}
 				next_action := requests_nextAction(elevator)
@@ -135,7 +136,7 @@ func ElevatorControl(
 
 				switch elevator.behaviour {
 				case EB_DoorOpen:
-					door_timer.Reset(elevator.config.doorOpenDuration_s)
+					door_timer.Reset(DOOR_OPEN_DURATION)
 					requests_clearAtCurrentFloor(elevator)
 				case EB_Idle, EB_Moving:
 					io_setDoorOpenLamp(false)

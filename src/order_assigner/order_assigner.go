@@ -110,10 +110,11 @@ func generateJson(orders order_redundancy.ConfirmedOrders, states map[string]ele
 func assign(orders order_redundancy.ConfirmedOrders,
 	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 	json_msg := generateJson(orders, states)
-
+	if !states[id].Available {
+		return [N_FLOORS][N_BTN_TYPES]bool{}, true
+	}
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
-		fmt.Println(string(json_msg))
 		fmt.Println("order assigner failed -don't worry, be happy")
 		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
@@ -122,5 +123,6 @@ func assign(orders order_redundancy.ConfirmedOrders,
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(msg[id])
 	return msg[id], false
 }
