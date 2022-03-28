@@ -24,20 +24,20 @@ type JsonProxy struct {
 
 func OrderAssigner(
 	or_oa_confirmedOrders <-chan order_redundancy.ConfirmedOrders,
-	net_oa_elevatorState <-chan elevator_control.ElevatorState,
-	ec_oa_localElevatorState <-chan elevator_control.ElevatorState,
+	net_oa_elevatorState <-chan elevator_control.ElevatorMsg,
+	ec_oa_elevator <-chan elevator_control.ElevatorMsg,
 	al_oa_newElevDetected <-chan string,
 	al_oa_elevsLost <-chan []string,
 	oa_ec_assignedOrders chan<- [N_FLOORS][N_BTN_TYPES]bool,
 	id string) {
 
 	confirmed_orders := order_redundancy.ConfirmedOrders{}
-	elevator_states := make(map[string]elevator_control.ElevatorState)
+	elevator_states := make(map[string]elevator_control.ElevatorMsg)
 
-	elevator_states[id] = elevator_control.ElevatorState{}
+	elevator_states[id] = elevator_control.ElevatorMsg{}
 
 	//Init -> get first local elevator state
-	<-ec_oa_localElevatorState
+	<-ec_oa_elevator
 
 	for {
 		select {
@@ -49,7 +49,7 @@ func OrderAssigner(
 			}
 
 		case new_elev := <-al_oa_newElevDetected:
-			elevator_states[new_elev] = elevator_control.ElevatorState{}
+			elevator_states[new_elev] = elevator_control.ElevatorMsg{}
 
 		case lost_elev := <-al_oa_elevsLost:
 			for i := range lost_elev {
@@ -75,7 +75,7 @@ func OrderAssigner(
 					}
 				}
 			}
-		case state := <-ec_oa_localElevatorState:
+		case state := <-ec_oa_elevator:
 			if prev_state, ok := elevator_states[state.Id]; ok {
 
 				if prev_state != state {
@@ -92,7 +92,7 @@ func OrderAssigner(
 
 }
 
-func generateJson(orders order_redundancy.ConfirmedOrders, states map[string]elevator_control.ElevatorState) []byte {
+func generateJson(orders order_redundancy.ConfirmedOrders, states map[string]elevator_control.ElevatorMsg) []byte {
 	var msg JsonProxy
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]JsonIdState)
@@ -108,7 +108,7 @@ func generateJson(orders order_redundancy.ConfirmedOrders, states map[string]ele
 }
 
 func assign(orders order_redundancy.ConfirmedOrders,
-	states map[string]elevator_control.ElevatorState, id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
+	states map[string]elevator_control.ElevatorMsg, id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 	json_msg := generateJson(orders, states)
 	if !states[id].Available {
 		return [N_FLOORS][N_BTN_TYPES]bool{}, true

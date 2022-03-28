@@ -31,8 +31,8 @@ func main() {
 
 	//ec: elevator_control - controlling the single elevator
 	ec_or_localOrderServed := make(chan elevio.ButtonEvent, 1)
-	ec_oa_localElevatorState := make(chan elevator_control.ElevatorState, 1)
-	ec_net_elevatorStateTX := make(chan elevator_control.ElevatorState, 1)
+	ec_oa_elevator := make(chan elevator_control.ElevatorMsg, 1)
+	ec_net_elevatorTX := make(chan elevator_control.ElevatorMsg, 1)
 
 	//oa: order assigner
 	oa_ec_assignedOrders := make(chan [N_FLOORS][N_BTN_TYPES]bool, 1)
@@ -51,7 +51,7 @@ func main() {
 	//net: network
 	net_al_peersUpdate := make(chan peers.PeerUpdate, 1)
 	net_or_remoteOrders := make(chan order_redundancy.OrdersMSG, 1)
-	net_oa_elevatorStateRX := make(chan elevator_control.ElevatorState, 1)
+	net_oa_elevatorStateRX := make(chan elevator_control.ElevatorMsg, 1)
 
 	elevio.Init(HARDWARE_ADDR, N_FLOORS)
 	go alive_listener.AliveListener(
@@ -69,7 +69,7 @@ func main() {
 	go order_assigner.OrderAssigner(
 		or_oa_confirmedOrders,
 		net_oa_elevatorStateRX,
-		ec_oa_localElevatorState,
+		ec_oa_elevator,
 		al_oa_newElevDetected,
 		al_oa_elevsLost,
 		oa_ec_assignedOrders,
@@ -79,14 +79,14 @@ func main() {
 		drv_ec_floor,
 		drv_ec_obstr,
 		drv_ec_stop,
-		ec_net_elevatorStateTX,
-		ec_oa_localElevatorState,
+		ec_net_elevatorTX,
+		ec_oa_elevator,
 		ec_or_localOrderServed,
 		id)
 
 	go network.Network(
 		net_al_peersUpdate,
-		ec_net_elevatorStateTX,
+		ec_net_elevatorTX,
 		net_oa_elevatorStateRX,
 		or_net_localOrders,
 		net_or_remoteOrders,

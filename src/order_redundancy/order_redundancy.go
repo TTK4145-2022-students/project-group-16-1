@@ -57,7 +57,7 @@ func OrderRedundancyManager(
 
 	io_setAllLights(id, orders)
 
-	periodicTimeout := time.NewTicker(INTERVAL)
+	periodicTimeout := time.NewTicker(PERIODIC_SEND_DURATION)
 
 	for {
 		select {

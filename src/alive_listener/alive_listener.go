@@ -36,9 +36,9 @@ func AliveListener(
 	}
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
+func contains(s []string, element string) bool {
+	for _, str := range s {
+		if str == element {
 			return true
 		}
 	}
