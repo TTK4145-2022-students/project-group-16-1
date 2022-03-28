@@ -3,7 +3,6 @@ package order_redundancy
 import (
 	. "Elevator-project/src/constants"
 	"Elevator-project/src/elevio"
-	"fmt"
 	"time"
 )
 
@@ -137,7 +136,6 @@ func OrderRedundancyManager(
 					case OS_Confirmed:
 						*local_order_ptr = remote_order
 						*local_consensus_ptr = []string{}
-						fmt.Println("Recieved NONE from remote while in confirmed")
 					case OS_None:
 					case OS_Unconfirmed:
 					}

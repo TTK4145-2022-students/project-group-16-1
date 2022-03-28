@@ -121,7 +121,7 @@ func requests_shouldStop(e *Elevator) bool {
 
 func requests_shouldClearImmediately(e *Elevator) []Button {
 	should_clear_btns := []Button{}
-	
+
 	if e.dirn == D_Up {
 		if e.requests[e.floor][B_HallUp] == true {
 			e.requests[e.floor][B_HallUp] = false
@@ -147,7 +147,7 @@ func requests_shouldClearImmediately(e *Elevator) []Button {
 		e.requests[e.floor][B_Cab] = false
 		should_clear_btns = append(should_clear_btns, B_Cab)
 	}
-	
+
 	return should_clear_btns
 }
 
@@ -186,17 +186,7 @@ func requests_clearAtCurrentFloor(e *Elevator) []Button {
 		if e.requests[e.floor][B_HallUp] == true {
 			e.requests[e.floor][B_HallUp] = false
 			should_clear_btns = append(should_clear_btns, B_HallUp)
-		}
-		if e.requests[e.floor][B_HallDown] == true {
-			e.requests[e.floor][B_HallDown] = false
-			should_clear_btns = append(should_clear_btns, B_HallDown)
-		}
-	default:
-		if e.requests[e.floor][B_HallUp] == true {
-			e.requests[e.floor][B_HallUp] = false
-			should_clear_btns = append(should_clear_btns, B_HallUp)
-		}
-		if e.requests[e.floor][B_HallDown] == true {
+		} else if e.requests[e.floor][B_HallDown] == true {
 			e.requests[e.floor][B_HallDown] = false
 			should_clear_btns = append(should_clear_btns, B_HallDown)
 		}
