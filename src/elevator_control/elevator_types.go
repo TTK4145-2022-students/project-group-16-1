@@ -17,13 +17,13 @@ const (
 type Elevator struct {
 	floor         int
 	dirn          elevio.MotorDirection
-	requests      [N_FLOORS][N_BTN_TYPES]bool
+	orders        [N_FLOORS][N_BTN_TYPES]bool
 	behaviour     ElevatorBehaviour
 	obstructed    bool
 	motor_failure bool
 }
 
-type ElevatorMsg struct {
+type ElevatorStateMsg struct {
 	Behaviour string
 	Floor     int
 	Dirn      string
@@ -40,21 +40,20 @@ func (ev ElevatorBehaviour) String() string {
 }
 
 func elevator_print(elevator *Elevator) {
-	fmt.Printf("Floor: %d\n Direction: %s\n Requests: %v\n Behaviour: %s\n", elevator.floor, elevator.dirn.String(), elevator.requests, elevator.behaviour.String())
+	fmt.Printf("Floor: %d\n Direction: %s\n Requests: %v\n Behaviour: %s\n", elevator.floor, elevator.dirn.String(), elevator.orders, elevator.behaviour.String())
 }
 
-func elevator_uninitialised() Elevator {
+func createUninitialisedElevator() Elevator {
 	elevator := Elevator{
 		floor:     -1,
 		dirn:      elevio.MD_Stop,
 		behaviour: EB_Idle,
 	}
-
 	return elevator
 }
 
-func createElevatorMsg(elevator *Elevator, id string) ElevatorMsg {
-	var elevator_state ElevatorMsg
+func createElevatorStateMsg(elevator *Elevator, id string) ElevatorStateMsg {
+	var elevator_state ElevatorStateMsg
 	elevator_state.Behaviour = elevator.behaviour.String()
 	elevator_state.Dirn = elevator.dirn.String()
 	elevator_state.Floor = elevator.floor

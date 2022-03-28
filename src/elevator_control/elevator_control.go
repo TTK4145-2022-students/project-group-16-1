@@ -12,8 +12,8 @@ func ElevatorControl(
 	drv_ec_floor <-chan int,
 	drv_ec_obstr <-chan bool,
 	drv_ec_stop <-chan bool,
-	ec_net_elevator chan<- ElevatorMsg,
-	ec_oa_elevator chan<- ElevatorMsg,
+	ec_net_elevatorStateTx chan<- ElevatorStateMsg,
+	ec_oa_elevatorState chan<- ElevatorStateMsg,
 	ec_or_localOrderServed chan<- elevio.ButtonEvent,
 	id string) {
 
@@ -30,18 +30,18 @@ func ElevatorControl(
 	for {
 		select {
 		case assigned_orders := <-oa_ec_assignedOrders:
-			elevator.requests = assigned_orders
+			elevator.orders = assigned_orders
 			handle_motor_failure_timer(elevator, motor_failure_timer, &motor_failure_timer_ticking)
 
 			switch elevator.behaviour {
 			case EB_DoorOpen:
-				btns_to_clear := requests_shouldClearImmediately(elevator)
+				btns_to_clear := orders_shouldClearImmediately(elevator)
 				for _, btn := range btns_to_clear {
 					ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
 				}
 
 			case EB_Idle:
-				next_action := requests_nextAction(elevator)
+				next_action := orders_nextAction(elevator)
 				elevator.dirn = next_action.dirn
 				elevator.behaviour = next_action.behaviour
 
@@ -49,7 +49,7 @@ func ElevatorControl(
 				case EB_DoorOpen:
 					elevio.SetDoorOpenLamp(true)
 					door_timer.Reset(DOOR_OPEN_DURATION)
-					btns_to_clear := requests_clearAtCurrentFloor(elevator)
+					btns_to_clear := orders_clearAtCurrentFloor(elevator)
 					for _, btn := range btns_to_clear {
 						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
 					}
@@ -70,10 +70,10 @@ func ElevatorControl(
 
 			switch elevator.behaviour {
 			case EB_Moving:
-				if requests_shouldStop(elevator) {
+				if orders_shouldStop(elevator) {
 					elevio.SetMotorDirection(elevio.MD_Stop)
 					elevio.SetDoorOpenLamp(true)
-					btns_to_clear := requests_clearAtCurrentFloor(elevator)
+					btns_to_clear := orders_clearAtCurrentFloor(elevator)
 					for _, btn := range btns_to_clear {
 						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
 					}
@@ -94,14 +94,14 @@ func ElevatorControl(
 					break
 				}
 
-				next_action := requests_nextAction(elevator)
+				next_action := orders_nextAction(elevator)
 				elevator.dirn = next_action.dirn
 				elevator.behaviour = next_action.behaviour
 
 				switch elevator.behaviour {
 				case EB_DoorOpen:
 					door_timer.Reset(DOOR_OPEN_DURATION)
-					requests_clearAtCurrentFloor(elevator)
+					orders_clearAtCurrentFloor(elevator)
 				case EB_Idle, EB_Moving:
 					elevio.SetDoorOpenLamp(false)
 					elevio.SetMotorDirection(elevator.dirn)
@@ -109,19 +109,20 @@ func ElevatorControl(
 			}
 
 		case <-send_state_ticker.C:
-			elevator_msg := createElevatorMsg(elevator, id)
-			ec_net_elevator <- elevator_msg
-			ec_oa_elevator <- elevator_msg
+			elevator_msg := createElevatorStateMsg(elevator, id)
+			ec_net_elevatorStateTx <- elevator_msg
+			ec_oa_elevatorState <- elevator_msg
 
 		case <-motor_failure_timer.C:
 			elevator.motor_failure = true
+			fmt.Println("Timeout - motor failure")
 		}
 	}
 }
 
 func elevator_init(elevator *Elevator) {
 	fmt.Println("Initialising FSM: ")
-	*elevator = elevator_uninitialised()
+	*elevator = createUninitialisedElevator()
 	if elevator.floor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Down)
 		elevator.dirn = elevio.MD_Down
@@ -140,7 +141,7 @@ func handle_motor_failure_timer(
 	no_local_orders := true
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BTN_TYPES; btn++ {
-			if elevator.requests[floor][btn] {
+			if elevator.orders[floor][btn] {
 				no_local_orders = false
 				if !(floor == elevator.floor) && !*motor_failure_timer_ticking {
 					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
