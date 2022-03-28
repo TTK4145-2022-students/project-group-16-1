@@ -22,6 +22,14 @@ const (
 	MD_Stop                = 0
 )
 
+func (dirn MotorDirection) String() string {
+	dirnStrings := [...]string{"down", "stop", "up"}
+	if dirn < MD_Down || dirn > MD_Up {
+		return fmt.Sprintf("A non declared behaviour was given: (%d)", int(dirn))
+	}
+	return dirnStrings[dirn+1]
+}
+
 type ButtonType int
 
 const (
