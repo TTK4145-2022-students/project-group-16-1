@@ -6,13 +6,13 @@ import (
 )
 
 func AliveListener(
-	peersUpdate <-chan peers.PeerUpdate,
-	al_or_newElevDetected chan<- string,
-	al_or_elevsLost chan<- []string,
-	al_or_disconnected chan<- bool,
-	al_oa_newElevDetected chan<- string,
-	al_oa_elevsLost chan<- []string,
-	id string,
+	peersUpdate 			<-chan peers.PeerUpdate,
+	al_or_newElevDetected 	chan<- string,
+	al_or_elevsLost 		chan<- []string,
+	al_or_disconnected 		chan<- bool,
+	al_oa_newElevDetected 	chan<- string,
+	al_oa_elevsLost 		chan<- []string,
+	id 						string,
 ) {
 	for {
 		elev_update := <-peersUpdate

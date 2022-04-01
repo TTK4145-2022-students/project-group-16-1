@@ -2,20 +2,21 @@ package order_redundancy
 
 import (
 	. "Elevator-project/src/constants"
-	"Elevator-project/src/elevio"
+	"Elevator-project/src/elevator_io"
 	"time"
 )
 
 func OrderRedundancy(
-	net_or_remoteOrders <-chan OrdersMSG,
-	drv_or_buttons <-chan elevio.ButtonEvent,
-	ec_or_localOrderServed <-chan elevio.ButtonEvent,
-	al_or_newElevDetected <-chan string,
-	al_or_elevsLost <-chan []string,
-	al_or_disconnected <-chan bool,
-	or_oa_confirmedOrders chan<- ConfirmedOrders,
-	or_net_localOrders chan<- OrdersMSG,
-	id string) {
+	net_or_remoteOrders 	<-chan OrdersMSG,
+	eio_or_buttons 			<-chan elevator_io.ButtonEvent,
+	ec_or_localOrderServed 	<-chan elevator_io.ButtonEvent,
+	al_or_newElevDetected 	<-chan string,
+	al_or_elevsLost 		<-chan []string,
+	al_or_disconnected 		<-chan bool,
+	or_oa_confirmedOrders 	chan<- ConfirmedOrders,
+	or_net_localOrders 		chan<- OrdersMSG,
+	id string,
+) {
 
 	var alive_elevators []string
 
@@ -75,10 +76,12 @@ func OrderRedundancy(
 			}
 
 			// define order state transitions (cyclic counter) as function
-			orderStateMachine := func(local_order_ptr *OrderState,
+			orderStateMachine := func(
+				local_order_ptr 	*OrderState,
 				local_consensus_ptr *[]string,
-				remote_order OrderState,
-				remote_consensus []string) {
+				remote_order 		OrderState,
+				remote_consensus 	[]string,
+			) {
 				switch remote_order {
 				case OS_Unknown:
 					switch *local_order_ptr {
@@ -153,11 +156,11 @@ func OrderRedundancy(
 				}
 			}
 
-		case button_event := <-drv_or_buttons:
+		case button_event := <-eio_or_buttons:
 			floor := button_event.Floor
 			btn := button_event.Button
 			switch btn {
-			case elevio.BT_Cab:
+			case elevator_io.BT_Cab:
 				if orders.CabCalls[id][floor] != OS_Confirmed {
 					if len(alive_elevators) <= 1 {
 						orders.CabCalls[id][floor] = OS_Confirmed
@@ -166,7 +169,7 @@ func OrderRedundancy(
 					}
 
 				}
-			case elevio.BT_HallUp, elevio.BT_HallDown:
+			case elevator_io.BT_HallUp, elevator_io.BT_HallDown:
 				if len(alive_elevators) > 1 {
 					if orders.HallCalls[floor][btn] != OS_Confirmed {
 						orders.HallCalls[floor][btn] = OS_Unconfirmed
@@ -179,12 +182,12 @@ func OrderRedundancy(
 			floor := served_order.Floor
 			btn := served_order.Button
 			switch btn {
-			case elevio.BT_Cab:
+			case elevator_io.BT_Cab:
 				if orders.CabCalls[id][floor] == OS_Confirmed {
 					orders.CabCalls[id][floor] = OS_None
 					orders.CabCallConsensus[id][floor] = []string{}
 				}
-			case elevio.BT_HallUp, elevio.BT_HallDown:
+			case elevator_io.BT_HallUp, elevator_io.BT_HallDown:
 				if len(alive_elevators) > 1 {
 					orders.HallCalls[floor][btn] = OS_None
 					orders.HallCallConsensus[floor][btn] = []string{}
@@ -208,17 +211,17 @@ func io_setAllLights(id string, orders Orders) {
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			is_order := false
-			switch elevio.ButtonType(btn) {
-			case elevio.BT_Cab:
+			switch elevator_io.ButtonType(btn) {
+			case elevator_io.BT_Cab:
 				if orders.CabCalls[id][floor] == OS_Confirmed {
 					is_order = true
 				}
-			case elevio.BT_HallDown, elevio.BT_HallUp:
+			case elevator_io.BT_HallDown, elevator_io.BT_HallUp:
 				if orders.HallCalls[floor][btn] == OS_Confirmed {
 					is_order = true
 				}
 			}
-			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, is_order)
+			elevator_io.SetButtonLamp(elevator_io.ButtonType(btn), floor, is_order)
 		}
 	}
 }

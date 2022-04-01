@@ -2,7 +2,7 @@ package elevator_control
 
 import (
 	. "Elevator-project/src/constants"
-	"Elevator-project/src/elevio"
+	"Elevator-project/src/elevator_io"
 	"fmt"
 )
 
@@ -16,7 +16,7 @@ const (
 
 type Elevator struct {
 	floor         int
-	dirn          elevio.MotorDirection
+	dirn          elevator_io.MotorDirection
 	orders        [N_FLOORS][N_BTN_TYPES]bool
 	behaviour     ElevatorBehaviour
 	obstructed    bool
@@ -46,7 +46,7 @@ func elevator_print(elevator *Elevator) {
 func createUninitialisedElevator() Elevator {
 	elevator := Elevator{
 		floor:     -1,
-		dirn:      elevio.MD_Stop,
+		dirn:      elevator_io.MD_Stop,
 		behaviour: EB_Idle,
 	}
 	return elevator
@@ -54,10 +54,10 @@ func createUninitialisedElevator() Elevator {
 
 func createElevatorStateMsg(elevator *Elevator, id string) ElevatorStateMsg {
 	var elevator_state ElevatorStateMsg
-	elevator_state.Behaviour = elevator.behaviour.String()
-	elevator_state.Dirn = elevator.dirn.String()
-	elevator_state.Floor = elevator.floor
-	elevator_state.Id = id
-	elevator_state.Available = !((elevator.obstructed && elevator.behaviour == EB_DoorOpen) || elevator.motor_failure)
+	elevator_state.Behaviour 	= elevator.behaviour.String()
+	elevator_state.Dirn 		= elevator.dirn.String()
+	elevator_state.Floor 		= elevator.floor
+	elevator_state.Id 			= id
+	elevator_state.Available 	= !((elevator.obstructed && elevator.behaviour == EB_DoorOpen) || elevator.motor_failure)
 	return elevator_state
 }

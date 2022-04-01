@@ -23,13 +23,14 @@ type AssignerJSONTemplate struct {
 }
 
 func OrderAssigner(
-	or_oa_confirmedOrders <-chan order_redundancy.ConfirmedOrders,
-	net_oa_elevatorState <-chan elevator_control.ElevatorStateMsg,
-	ec_oa_elevatorState <-chan elevator_control.ElevatorStateMsg,
-	al_oa_newElevDetected <-chan string,
-	al_oa_elevsLost <-chan []string,
-	oa_ec_assignedOrders chan<- [N_FLOORS][N_BTN_TYPES]bool,
-	id string) {
+	or_oa_confirmedOrders 	<-chan order_redundancy.ConfirmedOrders,
+	net_oa_elevatorState 	<-chan elevator_control.ElevatorStateMsg,
+	ec_oa_elevatorState 	<-chan elevator_control.ElevatorStateMsg,
+	al_oa_newElevDetected	<-chan string,
+	al_oa_elevsLost 		<-chan []string,
+	oa_ec_assignedOrders 	chan<- [N_FLOORS][N_BTN_TYPES]bool,
+	id 						string,
+	) {
 
 	confirmed_orders := order_redundancy.ConfirmedOrders{}
 	elevator_states := make(map[string]elevator_control.ElevatorStateMsg)

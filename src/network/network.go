@@ -8,12 +8,13 @@ import (
 )
 
 func Network(
-	peerUpdateCh chan peers.PeerUpdate,
-	stateTX chan elevator_control.ElevatorStateMsg,
-	stateRX chan elevator_control.ElevatorStateMsg,
-	orderTX chan order_redundancy.OrdersMSG,
-	orderRX chan order_redundancy.OrdersMSG,
-	id string) {
+	peerUpdateCh 	chan peers.PeerUpdate,
+	stateTX 		chan elevator_control.ElevatorStateMsg,
+	stateRX 		chan elevator_control.ElevatorStateMsg,
+	orderTX 		chan order_redundancy.OrdersMSG,
+	orderRX 		chan order_redundancy.OrdersMSG,
+	id 				string,
+	) {
 
 	peerTxEnable := make(chan bool)
 	go peers.Transmitter(27773, id, peerTxEnable)

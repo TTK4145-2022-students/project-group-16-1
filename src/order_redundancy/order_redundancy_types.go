@@ -35,11 +35,11 @@ type ConfirmedOrders struct {
 
 func createOrdersMSG(id string, orders Orders) OrdersMSG {
 	var orders_msg OrdersMSG
-	orders_msg.Id = id
-	orders_msg.CabCalls = make(map[string][N_FLOORS]OrderState)
-	orders_msg.HallCalls = orders.HallCalls
-	orders_msg.HallCallConsensus = orders.HallCallConsensus
-	orders_msg.CabCallConsensus = make(map[string][N_FLOORS][]string)
+	orders_msg.Id 					= id
+	orders_msg.CabCalls 			= make(map[string][N_FLOORS]OrderState)
+	orders_msg.HallCalls 			= orders.HallCalls
+	orders_msg.HallCallConsensus 	= orders.HallCallConsensus
+	orders_msg.CabCallConsensus 	= make(map[string][N_FLOORS][]string)
 	for id, val := range orders.CabCalls {
 		orders_msg.CabCalls[id] = *val
 	}

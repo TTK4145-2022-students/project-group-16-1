@@ -2,21 +2,20 @@ package elevator_control
 
 import (
 	. "Elevator-project/src/constants"
-	"Elevator-project/src/elevio"
+	"Elevator-project/src/elevator_io"
 	"fmt"
 	"time"
 )
 
 func ElevatorControl(
-	oa_ec_assignedOrders <-chan [N_FLOORS][N_BTN_TYPES]bool,
-	drv_ec_floor <-chan int,
-	drv_ec_obstr <-chan bool,
-	drv_ec_stop <-chan bool,
-	ec_net_elevatorStateTx chan<- ElevatorStateMsg,
-	ec_oa_elevatorState chan<- ElevatorStateMsg,
-	ec_or_localOrderServed chan<- elevio.ButtonEvent,
-	id string) {
-
+	oa_ec_assignedOrders 	<-chan [N_FLOORS][N_BTN_TYPES]bool,
+	eio_ec_floor 			<-chan int,
+	eio_ec_obstr 			<-chan bool,
+	ec_net_elevatorStateTx 	chan<- ElevatorStateMsg,
+	ec_oa_elevatorState 	chan<- ElevatorStateMsg,
+	ec_or_localOrderServed 	chan<- elevator_io.ButtonEvent,
+	id 						string,
+	) {
 	elevator := &Elevator{}
 	elevator_init(elevator)
 
@@ -37,7 +36,7 @@ func ElevatorControl(
 			case EB_DoorOpen:
 				btns_to_clear := orders_shouldClearImmediately(elevator)
 				for _, btn := range btns_to_clear {
-					ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
+					ec_or_localOrderServed <- elevator_io.ButtonEvent{Floor: elevator.floor, Button: elevator_io.ButtonType(btn)}
 				}
 
 			case EB_Idle:
@@ -47,42 +46,42 @@ func ElevatorControl(
 
 				switch elevator.behaviour {
 				case EB_DoorOpen:
-					elevio.SetDoorOpenLamp(true)
+					elevator_io.SetDoorOpenLamp(true)
 					door_timer.Reset(DOOR_OPEN_DURATION)
 					btns_to_clear := orders_clearAtCurrentFloor(elevator)
 					for _, btn := range btns_to_clear {
-						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
+						ec_or_localOrderServed <- elevator_io.ButtonEvent{Floor: elevator.floor, Button: elevator_io.ButtonType(btn)}
 					}
 				case EB_Moving:
-					elevio.SetMotorDirection(elevator.dirn)
+					elevator_io.SetMotorDirection(elevator.dirn)
 				case EB_Idle:
 				}
 			}
 
-		case new_floor := <-drv_ec_floor:
+		case new_floor := <-eio_ec_floor:
 			//motor OK
 			motor_failure_timer.Stop()
 			motor_failure_timer_ticking = false
 			elevator.motor_failure = false
 
 			elevator.floor = new_floor
-			elevio.SetFloorIndicator(new_floor)
+			elevator_io.SetFloorIndicator(new_floor)
 
 			switch elevator.behaviour {
 			case EB_Moving:
 				if orders_shouldStop(elevator) {
-					elevio.SetMotorDirection(elevio.MD_Stop)
-					elevio.SetDoorOpenLamp(true)
+					elevator_io.SetMotorDirection(elevator_io.MD_Stop)
+					elevator_io.SetDoorOpenLamp(true)
 					btns_to_clear := orders_clearAtCurrentFloor(elevator)
 					for _, btn := range btns_to_clear {
-						ec_or_localOrderServed <- elevio.ButtonEvent{Floor: elevator.floor, Button: elevio.ButtonType(btn)}
+						ec_or_localOrderServed <- elevator_io.ButtonEvent{Floor: elevator.floor, Button: elevator_io.ButtonType(btn)}
 					}
 					door_timer.Reset(DOOR_OPEN_DURATION)
 					elevator.behaviour = EB_DoorOpen
 				}
 			}
 
-		case obstructed := <-drv_ec_obstr:
+		case obstructed := <-eio_ec_obstr:
 			elevator.obstructed = obstructed
 
 		case <-door_timer.C:
@@ -103,8 +102,8 @@ func ElevatorControl(
 					door_timer.Reset(DOOR_OPEN_DURATION)
 					orders_clearAtCurrentFloor(elevator)
 				case EB_Idle, EB_Moving:
-					elevio.SetDoorOpenLamp(false)
-					elevio.SetMotorDirection(elevator.dirn)
+					elevator_io.SetDoorOpenLamp(false)
+					elevator_io.SetMotorDirection(elevator.dirn)
 				}
 			}
 
@@ -124,8 +123,8 @@ func elevator_init(elevator *Elevator) {
 	fmt.Println("Initialising FSM: ")
 	*elevator = createUninitialisedElevator()
 	if elevator.floor == -1 {
-		elevio.SetMotorDirection(elevio.MD_Down)
-		elevator.dirn = elevio.MD_Down
+		elevator_io.SetMotorDirection(elevator_io.MD_Down)
+		elevator.dirn = elevator_io.MD_Down
 		elevator.behaviour = EB_Moving
 	}
 
@@ -134,9 +133,10 @@ func elevator_init(elevator *Elevator) {
 // Start motor failure timer if local assigned orders on other floor.
 // If no local asigned orders, motor has not failed (for our purposes)
 func handle_motor_failure_timer(
-	elevator *Elevator,
-	motor_failure_timer *time.Timer,
-	motor_failure_timer_ticking *bool) {
+	elevator 					*Elevator,
+	motor_failure_timer 		*time.Timer,
+	motor_failure_timer_ticking *bool,
+	) {
 
 	no_local_orders := true
 	for floor := 0; floor < N_FLOORS; floor++ {
