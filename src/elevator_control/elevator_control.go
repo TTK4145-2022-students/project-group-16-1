@@ -29,6 +29,9 @@ func ElevatorControl(
 	for {
 		select {
 		case assigned_orders := <-oa_ec_assignedOrders:
+			if elevator.motor_failure {
+				break
+			}
 			elevator.orders = assigned_orders
 			handle_motor_failure_timer(elevator, motor_failure_timer, &motor_failure_timer_ticking)
 
@@ -114,6 +117,7 @@ func ElevatorControl(
 
 		case <-motor_failure_timer.C:
 			elevator.motor_failure = true
+			motor_failure_timer_ticking = false
 			fmt.Println("Timeout - motor failure")
 		}
 	}
@@ -142,8 +146,8 @@ func handle_motor_failure_timer(
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < N_BTN_TYPES; btn++ {
 			if elevator.orders[floor][btn] {
-				no_local_orders = false
-				if !(floor == elevator.floor) && !*motor_failure_timer_ticking {
+				no_local_orders = false	
+				if !*motor_failure_timer_ticking {
 					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
 					*motor_failure_timer_ticking = true
 				}
