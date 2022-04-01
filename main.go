@@ -42,7 +42,7 @@ func main() {
 	al_or_elevsLost 		:= make(chan []string, 1)
 	al_or_disconnected 		:= make(chan bool, 1)
 
-	//or:order_redundancy - state machine/cyclic counter for orders
+	//or:order_redundancy - state machine/cyclic counter for orders. Peer to peer.
 	or_oa_confirmedOrders 	:= make(chan order_redundancy.ConfirmedOrders, 1)
 	or_net_localOrders 		:= make(chan order_redundancy.OrdersMSG, 1)
 

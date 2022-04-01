@@ -80,7 +80,7 @@ func orders_nextAction(e *Elevator) Action {
 		}
 
 		return action
-	case elevator_io.MD_Stop: // there should only be one order in the Stop case. Checking up or down first is arbitrary.
+	case elevator_io.MD_Stop: 
 		var action Action
 
 		if orders_here(e) {

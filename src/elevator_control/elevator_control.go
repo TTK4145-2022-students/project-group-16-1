@@ -59,7 +59,7 @@ func ElevatorControl(
 			}
 
 		case new_floor := <-eio_ec_floor:
-			//motor OK
+			//Arrived at new florr => motor OK
 			motor_failure_timer.Stop()
 			motor_failure_timer_ticking = false
 			elevator.motor_failure = false

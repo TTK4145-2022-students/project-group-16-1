@@ -105,7 +105,7 @@ func assign(orders order_redundancy.ConfirmedOrders,
 	states map[string]elevator_control.ElevatorStateMsg,
 	id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 
-	//don't assign if elevator unavailable (obstructed/motor failure)
+	//don't assign if elevator unavailable (obstructed/motor-failure)
 	if !states[id].Available {
 		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
