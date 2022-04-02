@@ -16,15 +16,15 @@ func ElevatorControl(
 	ec_or_localOrderServed 	chan<- elevator_io.ButtonEvent,
 	id 						string,
 	) {
-	elevator := &Elevator{}
-	elevator_init(elevator)
+	
 
 	door_timer := time.NewTimer(time.Second)
 	door_timer.Stop()
 	motor_failure_timer := time.NewTimer(MOTOR_FAILURE_DURATION)
-	motor_failure_timer.Stop()
-	motor_failure_timer_ticking := false
 	send_state_ticker := time.NewTicker(PERIODIC_SEND_DURATION)
+
+	elevator := &Elevator{}
+	elevator_init(elevator)
 
 	for {
 		select {
@@ -32,9 +32,9 @@ func ElevatorControl(
 			if elevator.motor_failure {
 				break
 			}
-			elevator.orders = assigned_orders
-			handle_motor_failure_timer(elevator, motor_failure_timer, &motor_failure_timer_ticking)
 
+			elevator.orders = assigned_orders
+			
 			switch elevator.behaviour {
 			case EB_DoorOpen:
 				btns_to_clear := orders_shouldClearImmediately(elevator)
@@ -57,6 +57,7 @@ func ElevatorControl(
 					}
 				case EB_Moving:
 					elevator_io.SetMotorDirection(elevator.dirn)
+					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
 				case EB_Idle:
 				}
 			}
@@ -64,7 +65,6 @@ func ElevatorControl(
 		case new_floor := <-eio_ec_floor:
 			//Arrived at new florr => motor OK
 			motor_failure_timer.Stop()
-			motor_failure_timer_ticking = false
 			elevator.motor_failure = false
 
 			elevator.floor = new_floor
@@ -81,6 +81,8 @@ func ElevatorControl(
 					}
 					door_timer.Reset(DOOR_OPEN_DURATION)
 					elevator.behaviour = EB_DoorOpen
+				} else {
+					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
 				}
 			}
 
@@ -104,9 +106,13 @@ func ElevatorControl(
 				case EB_DoorOpen:
 					door_timer.Reset(DOOR_OPEN_DURATION)
 					orders_clearAtCurrentFloor(elevator)
-				case EB_Idle, EB_Moving:
+				case EB_Idle:
 					elevator_io.SetDoorOpenLamp(false)
 					elevator_io.SetMotorDirection(elevator.dirn)
+				case EB_Moving:
+					elevator_io.SetDoorOpenLamp(false)
+					elevator_io.SetMotorDirection(elevator.dirn)
+					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
 				}
 			}
 
@@ -117,7 +123,6 @@ func ElevatorControl(
 
 		case <-motor_failure_timer.C:
 			elevator.motor_failure = true
-			motor_failure_timer_ticking = false
 			fmt.Println("Timeout - motor failure")
 		}
 	}
@@ -132,32 +137,4 @@ func elevator_init(elevator *Elevator) {
 		elevator.behaviour = EB_Moving
 	}
 
-}
-
-// Start motor failure timer if local assigned orders on other floor.
-// If no local asigned orders, motor has not failed (for our purposes)
-func handle_motor_failure_timer(
-	elevator 					*Elevator,
-	motor_failure_timer 		*time.Timer,
-	motor_failure_timer_ticking *bool,
-	) {
-
-	no_local_orders := true
-	for floor := 0; floor < N_FLOORS; floor++ {
-		for btn := 0; btn < N_BTN_TYPES; btn++ {
-			if elevator.orders[floor][btn] {
-				no_local_orders = false	
-				if !*motor_failure_timer_ticking {
-					motor_failure_timer.Reset(MOTOR_FAILURE_DURATION)
-					*motor_failure_timer_ticking = true
-				}
-			}
-		}
-	}
-
-	if no_local_orders {
-		motor_failure_timer.Stop()
-		*motor_failure_timer_ticking = false
-		elevator.motor_failure = false
-	}
 }
