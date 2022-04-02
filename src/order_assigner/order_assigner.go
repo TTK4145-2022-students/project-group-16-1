@@ -85,7 +85,10 @@ func OrderAssigner(
 
 }
 
-func elevToJSON(orders order_redundancy.ConfirmedOrders, states map[string]elevator_control.ElevatorStateMsg) []byte {
+func elevToJSON(
+	orders order_redundancy.ConfirmedOrders, 
+	states map[string]elevator_control.ElevatorStateMsg,
+	) []byte {
 	var msg AssignerJSONTemplate
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]ElevJSONTemplate)
@@ -101,9 +104,11 @@ func elevToJSON(orders order_redundancy.ConfirmedOrders, states map[string]eleva
 }
 
 //returns local assigned orders and error flag
-func assign(orders order_redundancy.ConfirmedOrders,
-	states map[string]elevator_control.ElevatorStateMsg,
-	id string) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
+func assign(
+	orders 	order_redundancy.ConfirmedOrders,
+	states 	map[string]elevator_control.ElevatorStateMsg,
+	id 		string,
+	) ([N_FLOORS][N_BTN_TYPES]bool, bool) {
 
 	//don't assign if elevator unavailable (obstructed/motor-failure)
 	if !states[id].Available {
