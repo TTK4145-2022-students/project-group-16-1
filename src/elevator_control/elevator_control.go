@@ -8,17 +8,16 @@ import (
 )
 
 func ElevatorControl(
-	oa_ec_assignedOrders 	<-chan [N_FLOORS][N_BTN_TYPES]bool,
-	eio_ec_floor 			<-chan int,
-	eio_ec_obstr 			<-chan bool,
-	ec_net_elevatorStateTx 	chan<- ElevatorStateMsg,
-	ec_oa_elevatorState 	chan<- ElevatorStateMsg,
-	ec_or_localOrderServed 	chan<- elevator_io.ButtonEvent,
-	id 						string,
+	oa_ec_localAssignedOrders 	<-chan [N_FLOORS][N_BTN_TYPES]bool,
+	eio_ec_floor 				<-chan int,
+	eio_ec_obstr 				<-chan bool,
+	ec_net_elevatorState 		chan<- ElevatorStateMsg,
+	ec_oa_elevatorState 		chan<- ElevatorStateMsg,
+	ec_or_localOrderServed 		chan<- elevator_io.ButtonEvent,
+	id 							string,
 	) {
-	
 
-	door_timer := time.NewTimer(time.Second)
+	door_timer := time.NewTimer(DOOR_OPEN_DURATION)
 	door_timer.Stop()
 	motor_failure_timer := time.NewTimer(MOTOR_FAILURE_DURATION)
 	send_state_ticker := time.NewTicker(PERIODIC_SEND_DURATION)
@@ -28,7 +27,7 @@ func ElevatorControl(
 
 	for {
 		select {
-		case assigned_orders := <-oa_ec_assignedOrders:
+		case assigned_orders := <-oa_ec_localAssignedOrders:
 			if elevator.motor_failure {
 				break
 			}
@@ -118,7 +117,7 @@ func ElevatorControl(
 
 		case <-send_state_ticker.C:
 			elevator_msg := createElevatorStateMsg(elevator, id)
-			ec_net_elevatorStateTx <- elevator_msg
+			ec_net_elevatorState <- elevator_msg
 			ec_oa_elevatorState <- elevator_msg
 
 		case <-motor_failure_timer.C:
@@ -128,6 +127,7 @@ func ElevatorControl(
 	}
 }
 
+// Makes sure elevator is on a valid floor. Allocate space for elevator object. 
 func elevator_init(elevator *Elevator) {
 	fmt.Println("Initialising FSM: ")
 	*elevator = createUninitialisedElevator()
@@ -136,5 +136,4 @@ func elevator_init(elevator *Elevator) {
 		elevator.dirn = elevator_io.MD_Down
 		elevator.behaviour = EB_Moving
 	}
-
 }

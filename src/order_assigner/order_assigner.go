@@ -23,17 +23,19 @@ type AssignerJSONTemplate struct {
 }
 
 func OrderAssigner(
-	or_oa_confirmedOrders 	<-chan order_redundancy.ConfirmedOrders,
-	net_oa_elevatorState 	<-chan elevator_control.ElevatorStateMsg,
-	ec_oa_elevatorState 	<-chan elevator_control.ElevatorStateMsg,
-	al_oa_newElevDetected	<-chan string,
-	al_oa_elevsLost 		<-chan []string,
-	oa_ec_assignedOrders 	chan<- [N_FLOORS][N_BTN_TYPES]bool,
-	id 						string,
+	or_oa_confirmedOrders 		<-chan order_redundancy.ConfirmedOrders,
+	net_oa_elevatorState 		<-chan elevator_control.ElevatorStateMsg,
+	ec_oa_elevatorState 		<-chan elevator_control.ElevatorStateMsg,
+	al_oa_newElevDetected		<-chan string,
+	al_oa_elevsLost 			<-chan []string,
+	oa_ec_localAssignedOrders 	chan<- [N_FLOORS][N_BTN_TYPES]bool,
+	id 							string,
 	) {
 
 	confirmed_orders := order_redundancy.ConfirmedOrders{}
 	elevator_states := make(map[string]elevator_control.ElevatorStateMsg)
+	// Wait for our own elevator state
+	// We only care about orders assigned to ourselves (peer-to-peer). Hence, we don't need to wait for other's states.
 	elevator_states[id] = <-ec_oa_elevatorState
 
 	for {
@@ -41,7 +43,7 @@ func OrderAssigner(
 		case confirmed_orders := <-or_oa_confirmedOrders:
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
-				oa_ec_assignedOrders <- local_assigned_orders
+				oa_ec_localAssignedOrders <- local_assigned_orders
 			}
 
 		case new_elev := <-al_oa_newElevDetected:
@@ -56,7 +58,7 @@ func OrderAssigner(
 			}
 			local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 			if !err {
-				oa_ec_assignedOrders <- local_assigned_orders
+				oa_ec_localAssignedOrders <- local_assigned_orders
 			}
 
 		case state := <-net_oa_elevatorState:
@@ -65,7 +67,7 @@ func OrderAssigner(
 					elevator_states[state.Id] = state
 					local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 					if !err {
-						oa_ec_assignedOrders <- local_assigned_orders
+						oa_ec_localAssignedOrders <- local_assigned_orders
 					}
 				}
 			}
@@ -76,7 +78,7 @@ func OrderAssigner(
 					elevator_states[state.Id] = state
 					local_assigned_orders, err := assign(confirmed_orders, elevator_states, id)
 					if !err {
-						oa_ec_assignedOrders <- local_assigned_orders
+						oa_ec_localAssignedOrders <- local_assigned_orders
 					}
 				}
 			}
@@ -89,6 +91,7 @@ func elevToJSON(
 	orders order_redundancy.ConfirmedOrders, 
 	states map[string]elevator_control.ElevatorStateMsg,
 	) []byte {
+		
 	var msg AssignerJSONTemplate
 	msg.HallRequests = orders.HallCalls
 	msg.States = make(map[string]ElevJSONTemplate)
@@ -103,7 +106,7 @@ func elevToJSON(
 	return json_msg
 }
 
-//returns local assigned orders and error flag
+// Returns local assigned orders and error flag
 func assign(
 	orders 	order_redundancy.ConfirmedOrders,
 	states 	map[string]elevator_control.ElevatorStateMsg,
@@ -118,7 +121,7 @@ func assign(
 	json_msg := elevToJSON(orders, states)
 	assigned_orders, err := exec.Command("./src/order_assigner/hall_request_assigner", "--input", string(json_msg), "--includeCab").Output()
 	if err != nil {
-		fmt.Println("order assigner failed - not critical")
+		fmt.Println("order assigner failed")
 		return [N_FLOORS][N_BTN_TYPES]bool{}, true
 	}
 	var msg map[string][N_FLOORS][N_BTN_TYPES]bool

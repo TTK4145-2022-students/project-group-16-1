@@ -8,11 +8,11 @@ import (
 )
 
 func Network(
-	peerUpdateCh 	chan peers.PeerUpdate,
 	stateTX 		chan elevator_control.ElevatorStateMsg,
-	stateRX 		chan elevator_control.ElevatorStateMsg,
 	orderTX 		chan order_redundancy.OrdersMSG,
+	stateRX 		chan elevator_control.ElevatorStateMsg,
 	orderRX 		chan order_redundancy.OrdersMSG,
+	peerUpdateCh 	chan peers.PeerUpdate,
 	id 				string,
 	) {
 

@@ -17,5 +17,10 @@ Different parameters, including N_FLOORS, can be set in the constants.go file.
 * net	- network:		Sends and recieves orders, elevator states and alive pings over network.
 * oa	- order_assigner:	Recieves orders and states from all elevators and "optimally" assigns these between elevators.
 * or	- order_redundancy:	Handles state transitions of orders. Order states are UNKNOWN, NONE, UNCONFIRMED and CONFIRMED.
+
   
-  
+The module diagram is shown below:
+![](images/ModuleDiagramv3.png)
+
+## The Order Redundancy module
+This module keeps track of the orderstate of both cab and hall calls.

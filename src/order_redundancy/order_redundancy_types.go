@@ -40,6 +40,7 @@ func createOrdersMSG(id string, orders Orders) OrdersMSG {
 	orders_msg.HallCalls 			= orders.HallCalls
 	orders_msg.HallCallConsensus 	= orders.HallCallConsensus
 	orders_msg.CabCallConsensus 	= make(map[string][N_FLOORS][]string)
+
 	for id, val := range orders.CabCalls {
 		orders_msg.CabCalls[id] = *val
 	}
@@ -50,9 +51,11 @@ func createOrdersMSG(id string, orders Orders) OrdersMSG {
 }
 
 func getConfirmedOrders(id string, orders Orders, alive_elevators []string) ConfirmedOrders {
+
 	var confirmed_orders ConfirmedOrders
 	confirmed_orders.CabCalls = make(map[string][N_FLOORS]bool)
 
+	// Hall calls
 	for floor := 0; floor < N_FLOORS; floor++ {
 		for btn := 0; btn < 2; btn++ {
 			if orders.HallCalls[floor][btn] == OS_Confirmed {
@@ -60,6 +63,8 @@ func getConfirmedOrders(id string, orders Orders, alive_elevators []string) Conf
 			}
 		}
 	}
+
+	// Cab calls
 	for _, elev_id := range alive_elevators {
 		confirmed_orders.CabCalls[elev_id] = [N_FLOORS]bool{}
 		cab_calls := [N_FLOORS]bool{}
@@ -70,6 +75,8 @@ func getConfirmedOrders(id string, orders Orders, alive_elevators []string) Conf
 		}
 		confirmed_orders.CabCalls[elev_id] = cab_calls
 	}
+
+	// Local cab calls
 	confirmed_orders.CabCalls[id] = [N_FLOORS]bool{}
 	cab_calls := [N_FLOORS]bool{}
 	for floor := 0; floor < N_FLOORS; floor++ {
@@ -78,5 +85,6 @@ func getConfirmedOrders(id string, orders Orders, alive_elevators []string) Conf
 		}
 	}
 	confirmed_orders.CabCalls[id] = cab_calls
+	
 	return confirmed_orders
 }

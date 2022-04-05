@@ -16,15 +16,21 @@ func AliveListener(
 ) {
 	for {
 		elev_update := <-peersUpdate
+
 		if len(elev_update.New) != 0 {
+			// New elevator detected
 			al_or_newElevDetected <- elev_update.New
 			al_oa_newElevDetected <- elev_update.New
 		}
+
 		if len(elev_update.Lost) != 0 {
+			// Lost at least one elevator
 			al_or_elevsLost <- elev_update.Lost
 			al_oa_elevsLost <- elev_update.Lost
 		}
+		
 		if contains(elev_update.Lost, id) {
+			// Lost contact with network
 			al_or_disconnected <- true
 		}
 
