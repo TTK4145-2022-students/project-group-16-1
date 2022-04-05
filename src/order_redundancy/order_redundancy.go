@@ -95,12 +95,9 @@ func OrderRedundancy(
 				case OS_Confirmed:
 					switch *local_order_ptr {
 					case OS_Unknown:
-						*local_order_ptr = remote_order
+						*local_order_ptr = OS_Confirmed
 						*local_consensus_ptr = insert(*local_consensus_ptr, id)
 						*local_consensus_ptr = insert(*local_consensus_ptr, remote_orders.Id)
-						if consensusCheck(*local_consensus_ptr, remote_consensus, alive_elevators) {
-							*local_order_ptr = OS_Confirmed
-						}
 					case OS_Confirmed:
 					case OS_None:
 					case OS_Unconfirmed:
@@ -112,9 +109,9 @@ func OrderRedundancy(
 				case OS_None:
 					switch *local_order_ptr {
 					case OS_Unknown:
-						*local_order_ptr = remote_order
+						*local_order_ptr = OS_None
 					case OS_Confirmed:
-						*local_order_ptr = remote_order
+						*local_order_ptr = OS_None
 						*local_consensus_ptr = []string{}
 					case OS_None:
 					case OS_Unconfirmed:
@@ -122,13 +119,12 @@ func OrderRedundancy(
 				case OS_Unconfirmed:
 					switch *local_order_ptr {
 					case OS_Unknown, OS_None, OS_Unconfirmed:
-						*local_order_ptr = remote_order
+						*local_order_ptr = OS_Unconfirmed
 						*local_consensus_ptr = insert(*local_consensus_ptr, id)
 						*local_consensus_ptr = insert(*local_consensus_ptr, remote_orders.Id)
 						if consensusCheck(*local_consensus_ptr, remote_consensus, alive_elevators) {
 							*local_order_ptr = OS_Confirmed
 						}
-
 					case OS_Confirmed:
 					}
 				}
@@ -168,8 +164,8 @@ func OrderRedundancy(
 						orders.CabCalls[id][floor] = OS_Confirmed
 					} else {
 						orders.CabCalls[id][floor] = OS_Unconfirmed
+						orders.CabCallConsensus[id][floor] = insert(orders.CabCallConsensus[id][floor], id)
 					}
-
 				}
 			case elevator_io.BT_HallUp, elevator_io.BT_HallDown:
 				if len(alive_elevators) > 1 {

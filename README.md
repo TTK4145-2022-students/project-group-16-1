@@ -7,7 +7,7 @@
 `go run main.go -id="[id]"`
 
 ## Set parameters
-Different parameters, including N_FLOORS, can be set in the constants.go file. 
+Different parameters, including N_FLOORS, can be set in the constants.go file located in src/constants. 
 
 ## Module overview
 
@@ -25,3 +25,4 @@ The module diagram is shown below:
 ## The Order Redundancy module
 This module keeps track of the order state of both cab and hall calls. 
 The following finite state machine describes the transitions:
+![](images/CyclicCounter.png)
