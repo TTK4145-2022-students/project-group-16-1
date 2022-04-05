@@ -23,4 +23,5 @@ The module diagram is shown below:
 ![](images/ModuleDiagramv3.png)
 
 ## The Order Redundancy module
-This module keeps track of the orderstate of both cab and hall calls.
+This module keeps track of the order state of both cab and hall calls. 
+The following finite state machine describes the transitions:

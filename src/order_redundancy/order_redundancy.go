@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// Refer to the finite state machine diagram in README for a full overview of order state transitions
+
 func OrderRedundancy(
 	net_or_remoteOrders 	<-chan OrdersMSG,
 	eio_or_buttons 			<-chan elevator_io.ButtonEvent,
